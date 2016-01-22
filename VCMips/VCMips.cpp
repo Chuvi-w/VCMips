@@ -32,8 +32,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 1;
 	}
 	
-	//VCProj->OpenProject(_T("D:\\Stuff\\Progs\\VSProjReader\\EmptyProj\\EmptyProj.vcxproj"));
-   VCProj->OpenProject(_T("D:\\USK\\USK50_PO\\USK50_PO-D_MG\\USK50_PO-D_MG.vcxproj"));
+	VCProj->OpenProject(_T("D:\\Stuff\\Progs\\VSProjReader\\EmptyProj\\EmptyProj.vcxproj"));
+	//VCProj->OpenProject(_T("D:/Stuff/Progs/VCMips/TestPrj_2013/TestPrj_2013.vcxproj"));
+  // VCProj->OpenProject(argv[1]);
   // VCProj->ForEachFile(NULL);
    delete VCProj;
 	

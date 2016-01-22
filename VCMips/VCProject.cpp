@@ -1,25 +1,55 @@
 #include "stdafx.h"
 #include "VCProject.h"
-
-
-
+/*
+   MSVC++ 14.0 _MSC_VER == 1900 (Visual Studio 2015)
+   MSVC++ 12.0 _MSC_VER == 1800 (Visual Studio 2013)
+   MSVC++ 11.0 _MSC_VER == 1700 (Visual Studio 2012)
+   MSVC++ 10.0 _MSC_VER == 1600 (Visual Studio 2010)
+   MSVC++ 9.0  _MSC_VER == 1500 (Visual Studio 2008)
+   MSVC++ 8.0  _MSC_VER == 1400 (Visual Studio 2005)
+   MSVC++ 7.1  _MSC_VER == 1310 (Visual Studio 2003)
+   MSVC++ 7.0  _MSC_VER == 1300
+   MSVC++ 6.0  _MSC_VER == 1200
+   MSVC++ 5.0  _MSC_VER == 1100
+*/
 
 
 using namespace VCProjectEngineLibrary;
 CVCProject::CVCProject() :CBaseProject(this)
 {
 	HRESULT hr;
-	hr = CoCreateInstance(
+	/*hr = CoCreateInstance(
 									__uuidof(VCProjectEngineObject), 
 									NULL, 
 									CLSCTX_INPROC_SERVER, 
 									__uuidof(VCProjectEngine), 
 									reinterpret_cast<void**>(&VCEngine)
+								);*/
+
+   _tgetcwd(szCurWD,MAX_PATH-1);
+   _sntprintf_s(szComponentsInternalDir,MAX_PATH-1,_T("%s\\ProjectComponents"),szCurWD);
+
+   if(!CopyComponents())
+   {
+      throw CFormatedException(_T("Failed to copy ProjectComponents dir."));
+      return;
+   }
+
+	hr = CoCreateInstance(
+									CLSID_VCProjectEngineObject,
+									nullptr, 
+									CLSCTX_INPROC_SERVER, 
+									IID_VCProjectEngine,
+									reinterpret_cast<void**>(&VCEngine)
 								);
+
 	if (FAILED(hr) || !VCEngine)
 	{
 		throw CFormatedException(_T("Unable to create VCProjectEngine Instance."));
+      return;
 	}
+	
+   
 }
 
 
@@ -36,11 +66,32 @@ BOOL CVCProject::OpenProject(const TCHAR *ProjectName)
    {
       CloseProject();
    }
-   CComPtr<IDispatch> spDisp = NULL;
-   HRESULT hr=VCEngine->LoadProject(CComBSTR(ProjectName),&spDisp);
+   CComPtr<IDispatch> spDisp = VCProject;
+	BSTR bsPrjName = CComBSTR(ProjectName);
+  // HRESULT hr=VCEngine->LoadProject(CComBSTR(ProjectName),&spDisp);
+	HRESULT hr = S_FALSE;
+  auto llb= LoadLibrary(_T("C:\\Program Files (x86)\\Microsoft Visual Studio 10.0\\Common7\\Tools\\ProjectComponents\\Microsoft.VisualStudio.Project.VisualC.VCProjectEngine.dll"));
+   hr=VCEngine->LoadProject(bsPrjName, &spDisp);
+/*
+   try
+   {
+		
+   }
+	catch (const std::exception& e)
+   {
+		_ftprintf(stderr, _T("Error: unable to load \"%s\" (%x).\n"), ProjectName, HRESULT_CODE(hr));
+   }
+   catch (...)
+   {
+		_ftprintf(stderr, _T("Error: unable to load \"%s\" (%x).\n"), ProjectName, HRESULT_CODE(hr));
+   }
+  */
    if(FAILED(hr)||!spDisp)
    {
-      _ftprintf(stderr, _T("Error: unable to load \"%s\".\n"),ProjectName);
+		
+
+		
+      _ftprintf(stderr, _T("Error: unable to load \"%s\" (%x).\n"),ProjectName,HRESULT_CODE(hr));
       return FALSE;
    }
    VCProject=spDisp;
@@ -254,5 +305,29 @@ void CVCProject::ForEachFile(pfnForEachFileFunc Func)
    }
 
   // VCProjectConf
+}
+
+BOOL CVCProject::CopyComponents()
+{
+   DeleteComponents();
+   TCHAR szBaseComponentsDir[MAX_PATH];
+   TCHAR szVSToolsDir[MAX_PATH]
+   TCHAR EnvName[50];
+  // _tdupenv_s(&szVSToolsDir)
+   szVSToolsDir=_tgetenv(_T("VS120COMNTOOLS"));
+   return FALSE;
+   
+}
+
+BOOL CVCProject::DeleteComponents()
+{
+   if(PathFileExists(szComponentsInternalDir))
+   {
+      if(_trmdir(szComponentsInternalDir))
+      {
+         return FALSE;
+      }
+   }
+   return TRUE;
 }
 

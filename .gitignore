@@ -3,3 +3,6 @@
 /.vs/
 /VCMips.exe
 /*.suo
+/ipch/vcmips-5fb8b60d/*.ipch
+/*.opensdf
+/*.sdf

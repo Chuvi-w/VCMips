@@ -15,7 +15,7 @@
 #include <comdef.h>
 #include <direct.h>
 #include <exception>
-
+#include <cstdlib>
 // TODO: Установите здесь ссылки на дополнительные заголовки, требующиеся для программы
 
 

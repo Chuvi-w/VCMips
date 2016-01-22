@@ -22,7 +22,7 @@
     <PlatformToolset>v100</PlatformToolset>
     <PlatformToolset Condition="$(VisualStudioVersion) == '12.0'">v120</PlatformToolset>
     <PlatformToolset Condition="$(VisualStudioVersion) == '14.0'">v140</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -47,11 +47,13 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)\Bin\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\Bin\Temp\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</IntDir>
+    <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)\Bin\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\Bin\Temp\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</IntDir>
+    <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -66,7 +68,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PreBuildEvent>
+    <PreBuildEvent Condition="$(VisualStudioVersion) == '10.0'">
       <Command>if not exist "$(SolutionDir)ProjectComponents" mkdir "$(SolutionDir)ProjectComponents"
 copy /Y "$(DevEnvDir)..\Tools\ProjectComponents" "$(SolutionDir)ProjectComponents"</Command>
     </PreBuildEvent>
@@ -91,7 +93,7 @@ copy /Y "$(DevEnvDir)..\Tools\ProjectComponents" "$(SolutionDir)ProjectComponent
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <PreBuildEvent>
+    <PreBuildEvent Condition="$(VisualStudioVersion) == '10.0'">
       <Command>if not exist "$(SolutionDir)ProjectComponents" mkdir "$(SolutionDir)ProjectComponents"
 copy /Y "$(DevEnvDir)..\Tools\ProjectComponents" "$(SolutionDir)ProjectComponents"</Command>
     </PreBuildEvent>
