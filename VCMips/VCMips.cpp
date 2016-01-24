@@ -4,12 +4,17 @@
 #include "stdafx.h"
 #include "VCProject.h"
 #include "MCS2Project.h"
-
+#include "CMD5.h"
+#include "FileSystem.h"
 
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	auto Data=CMD5("Md5Test").Get();
 
+	CFileSystem fs;
+	auto res=fs.CompareDirs(_T("D:\\Work\\VCMips\\ProjectComponents"), _T("C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\Tools\\ProjectComponents"));
+	auto fi=fs.GetDirectoryInfo(_T("D:\\Work\\VCMips3"));
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (hr != S_OK)
 	{

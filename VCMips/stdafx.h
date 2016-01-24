@@ -16,6 +16,9 @@
 #include <direct.h>
 #include <exception>
 #include <cstdlib>
+#include <vector>
+#include <stddef.h>
+#include <stdint.h>
 // TODO: Установите здесь ссылки на дополнительные заголовки, требующиеся для программы
 
 

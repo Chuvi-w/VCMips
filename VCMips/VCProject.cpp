@@ -311,10 +311,10 @@ BOOL CVCProject::CopyComponents()
 {
    DeleteComponents();
    TCHAR szBaseComponentsDir[MAX_PATH];
-   TCHAR szVSToolsDir[MAX_PATH]
+	TCHAR szVSToolsDir[MAX_PATH];
    TCHAR EnvName[50];
   // _tdupenv_s(&szVSToolsDir)
-   szVSToolsDir=_tgetenv(_T("VS120COMNTOOLS"));
+//   szVSToolsDir=_tgetenv(_T("VS120COMNTOOLS"));
    return FALSE;
    
 }
