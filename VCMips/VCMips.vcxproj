@@ -48,12 +48,14 @@
     <OutDir>$(SolutionDir)\Bin\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\Bin\Temp\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</IntDir>
     <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)\Bin\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\Bin\Temp\$(PlatformToolset)_$(PlatformTarget)\$(Configuration)\</IntDir>
     <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -107,6 +109,8 @@ copy /Y "$(DevEnvDir)..\Tools\ProjectComponents" "$(SolutionDir)ProjectComponent
   <ItemGroup>
     <ClInclude Include="BaseProject.h" />
     <ClInclude Include="CMD5.h" />
+    <ClInclude Include="CommandLine.h" />
+    <ClInclude Include="CompilerRunner.h" />
     <ClInclude Include="FileSystem.h" />
     <ClInclude Include="MCS2Project.h" />
     <ClInclude Include="stdafx.h" />
@@ -116,6 +120,8 @@ copy /Y "$(DevEnvDir)..\Tools\ProjectComponents" "$(SolutionDir)ProjectComponent
   <ItemGroup>
     <ClCompile Include="BaseProject.cpp" />
     <ClCompile Include="CMD5.cpp" />
+    <ClCompile Include="CommandLine.cpp" />
+    <ClCompile Include="CompilerRunner.cpp" />
     <ClCompile Include="FileSystem.cpp" />
     <ClCompile Include="MCS2Project.cpp" />
     <ClCompile Include="stdafx.cpp">

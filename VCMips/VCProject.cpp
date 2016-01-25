@@ -1,17 +1,6 @@
 #include "stdafx.h"
 #include "VCProject.h"
-/*
-   MSVC++ 14.0 _MSC_VER == 1900 (Visual Studio 2015)
-   MSVC++ 12.0 _MSC_VER == 1800 (Visual Studio 2013)
-   MSVC++ 11.0 _MSC_VER == 1700 (Visual Studio 2012)
-   MSVC++ 10.0 _MSC_VER == 1600 (Visual Studio 2010)
-   MSVC++ 9.0  _MSC_VER == 1500 (Visual Studio 2008)
-   MSVC++ 8.0  _MSC_VER == 1400 (Visual Studio 2005)
-   MSVC++ 7.1  _MSC_VER == 1310 (Visual Studio 2003)
-   MSVC++ 7.0  _MSC_VER == 1300
-   MSVC++ 6.0  _MSC_VER == 1200
-   MSVC++ 5.0  _MSC_VER == 1100
-*/
+#include <cerrno>
 
 
 using namespace VCProjectEngineLibrary;
@@ -28,7 +17,13 @@ CVCProject::CVCProject() :CBaseProject(this)
 
    _tgetcwd(szCurWD,MAX_PATH-1);
    _sntprintf_s(szComponentsInternalDir,MAX_PATH-1,_T("%s\\ProjectComponents"),szCurWD);
-
+   if(!GetComponentsBase())
+   {
+      throw CFormatedException(_T("Failed to find ProjectComponents dir."));
+      return;
+   }
+   
+   
    if(!CopyComponents())
    {
       throw CFormatedException(_T("Failed to copy ProjectComponents dir."));
@@ -56,6 +51,7 @@ CVCProject::CVCProject() :CBaseProject(this)
 CVCProject::~CVCProject()
 {
    CloseProject();
+   DeleteComponents();
 }
 
 
@@ -158,7 +154,7 @@ BOOL CVCProject::OpenProject(const TCHAR *ProjectName)
 	return TRUE;
 }
 
-/*
+
 BOOL CVCProject::CreateProject(const TCHAR *ProjectName)
 {
 
@@ -174,7 +170,7 @@ BOOL CVCProject::CreateProject(const TCHAR *ProjectName)
 	}
 	
 	return TRUE;
-}*/
+}
 
 BOOL CVCProject::SaveProject()
 {
@@ -307,27 +303,129 @@ void CVCProject::ForEachFile(pfnForEachFileFunc Func)
   // VCProjectConf
 }
 
+BOOL CVCProject::GetComponentsBase()
+{
+
+   TCHAR EnvName[60];
+   auto GetEnvName=[&EnvName](int Version)->TCHAR*
+   {
+      _stprintf_s(EnvName,_T("VS%iCOMNTOOLS"),Version);
+      return EnvName;
+   };
+   auto GetComponenstPath=[this,GetEnvName](int Version)->TCHAR*
+   {
+      size_t RetSize=0;
+     auto err= _tgetenv_s(&RetSize,this->szComponentsDir,GetEnvName(Version));
+     if(err||!RetSize)
+     {
+        return NULL;
+     }
+     PathAppend(this->szComponentsDir,_T("ProjectComponents"));
+     return this->szComponentsDir;
+   };
+
+   /*
+   MSVC++ 14.0 _MSC_VER == 1900 (Visual Studio 2015)
+   MSVC++ 12.0 _MSC_VER == 1800 (Visual Studio 2013)
+   MSVC++ 11.0 _MSC_VER == 1700 (Visual Studio 2012)
+   MSVC++ 10.0 _MSC_VER == 1600 (Visual Studio 2010)
+   MSVC++ 9.0  _MSC_VER == 1500 (Visual Studio 2008)
+   MSVC++ 8.0  _MSC_VER == 1400 (Visual Studio 2005)
+   MSVC++ 7.1  _MSC_VER == 1310 (Visual Studio 2003)
+   MSVC++ 7.0  _MSC_VER == 1300
+   MSVC++ 6.0  _MSC_VER == 1200
+   MSVC++ 5.0  _MSC_VER == 1100
+*/
+   switch(_MSC_VER)
+   {
+   default:
+      {
+         if(_MSC_VER<1400)
+         {
+            _ftprintf(stderr,_T("Your Visual Studio version (%i) is too old. Throw it away.\n"),_MSC_VER);
+         }
+         else if(_MSC_VER>1900)
+         {
+            _ftprintf(stderr,_T("Add your Visual Studio version (%i) to switch below.\n"),_MSC_VER);
+         }
+         else
+         {
+            _ftprintf(stderr,_T("Unknown Visual Studio version (%i)\n"),_MSC_VER);
+         }
+         return FALSE;
+      }
+   case 1400:
+      {
+         if(!GetComponenstPath(80))
+         {
+            return FALSE;
+         }
+         break;
+      }
+   case 1500:
+      {
+         if(!GetComponenstPath(90))
+         {
+            return FALSE;
+         }
+         break;
+      }
+   case 1600:
+      {
+         if(!GetComponenstPath(100))
+         {
+            return FALSE;
+         }
+         break;
+      }
+   case 1700:
+      {
+         if(!GetComponenstPath(110))
+         {
+            return FALSE;
+         }
+         break;
+      }
+   case 1800:
+      {
+         if(!GetComponenstPath(120))
+         {
+            return FALSE;
+         }
+         break;
+      }
+   case 1900:
+      {
+         if(!GetComponenstPath(140))
+         {
+            return FALSE;
+         }
+         break;
+      }
+   }
+
+   BOOL Empty=FALSE;
+   if(!Fs.DirExists(szComponentsDir,&Empty))
+   {
+      _ftprintf(stderr,_T("%s not exists\n"),szComponentsDir);
+      return FALSE;
+   }
+   if(Empty)
+   {
+       _ftprintf(stderr,_T("%s is empty\n"),szComponentsDir);
+   }
+   return TRUE;
+}
+
 BOOL CVCProject::CopyComponents()
 {
-   DeleteComponents();
-   TCHAR szBaseComponentsDir[MAX_PATH];
-	TCHAR szVSToolsDir[MAX_PATH];
-   TCHAR EnvName[50];
-  // _tdupenv_s(&szVSToolsDir)
-//   szVSToolsDir=_tgetenv(_T("VS120COMNTOOLS"));
-   return FALSE;
+   return Fs.CopyDir(szComponentsDir,szComponentsInternalDir);
    
 }
 
 BOOL CVCProject::DeleteComponents()
 {
-   if(PathFileExists(szComponentsInternalDir))
-   {
-      if(_trmdir(szComponentsInternalDir))
-      {
-         return FALSE;
-      }
-   }
-   return TRUE;
+   return Fs.RemoveDir(szComponentsInternalDir);
+
 }
 
