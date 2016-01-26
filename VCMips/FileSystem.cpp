@@ -12,7 +12,7 @@ CFileSystem::~CFileSystem()
 {
 }
 
-BOOL CFileSystem::DirExists(TCHAR *Directory,BOOL *isEmpty)
+BOOL CFileSystem::DirExists(const TCHAR *Directory,BOOL *isEmpty/*=NULL*/)
 {
 	if (!Directory)
 	{
@@ -61,6 +61,28 @@ BOOL CFileSystem::RemoveDir(TCHAR *Dir,BOOL MakeEmpty)
    //return RemoveDirectory(Dir);
    return _trmdir(Dir);
 }
+
+BOOL CFileSystem::PathContainsSeparator(TCHAR *Path,size_t *LastSeparatorPos/*=NULL*/)
+{
+   if(!Path||!Path[0])
+   {
+      return FALSE;
+   }
+
+   for(auto c=&Path[_tcslen(Path)];c>=Path;--c)
+   {
+      if(*c==_T('\\')||*c==_T('/'))
+      {
+         if(LastSeparatorPos)
+         {
+            *LastSeparatorPos=(c-Path);
+         }
+         return TRUE;
+      }
+   }
+return FALSE;
+}
+
 
 std::vector<FileInfo_t> CFileSystem::GetDirectoryInfo(TCHAR *Directory, std::vector<FileInfo_t> *fi)
 {

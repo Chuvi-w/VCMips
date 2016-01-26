@@ -57,28 +57,69 @@ private:
 
 
 
+
+class CProjectConfiguration;
 class CVCProject :public CBaseProject
 {
 public:
 	CVCProject();
 	~CVCProject();
-	BOOL OpenProject(const TCHAR *ProjectName);
+	BOOL OpenProject(const TCHAR *szProjectFile);
 	BOOL CreateProject(const TCHAR *ProjectName) ;//NotImplemented(FALSE);
 	BOOL SaveProject();
    BOOL CloseProject();
    void ForEachFile(pfnForEachFileFunc Func);
+   const TCHAR *GetProjectName();
 private:
    BOOL GetComponentsBase();
    BOOL CopyComponents();
    BOOL DeleteComponents();
 private:
+   
 	CComPtr<VCProjectEngineLibrary::VCProjectEngine> VCEngine;
 	CComQIPtr<VCProjectEngineLibrary::VCProject>	    VCProject;
    TCHAR szComponentsDir[MAX_PATH];
    TCHAR szCurWD[MAX_PATH];
    TCHAR szComponentsInternalDir[MAX_PATH];
+   TCHAR ProjectFile[MAX_PATH];
+   TCHAR *ProjectName;
    BOOL bChanged;
    CFileSystem Fs;
+   std::vector<CProjectConfiguration*> Configs;
 };
 
+
+
+typedef struct UserMacro_s
+{
+   TCHAR *szName;
+   TCHAR *szVal;
+   BOOL bEnvSet;
+   TCHAR *szFilePath;
+}UserMacro_t;
+
+
+
+class CFileInfo
+{
+public:
+   CFileInfo();
+   ~CFileInfo();
+};
+
+class CProjectConfiguration
+{
+public:
+   CProjectConfiguration(const TCHAR *PlatformName,const TCHAR *ConfigName);
+   ~CProjectConfiguration();
+   void AddUserMacro(const TCHAR *Name,const TCHAR *Value,BOOL EnvSet,const TCHAR *FilePath);
+   const TCHAR *GetMacroValue(const TCHAR* Name,BOOL *EnvSet=NULL,const TCHAR **FilePath=NULL);
+
+private:
+   TCHAR *szPlatName;
+   TCHAR *szConfigName;
+   TCHAR *szUserMacroFile;
+   std::vector<UserMacro_t*> UserMacros;
+   std::vector<CFileInfo*> ProjectFiles;
+};
 #endif // VCProject_h__

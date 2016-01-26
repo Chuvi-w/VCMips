@@ -1,26 +1,89 @@
 #include "StdAfx.h"
-#include "CompilerRunner.h"
+#include "ProcessRunner.h"
 
 
-CCompilerRunner::CCompilerRunner(void)
+CProcessRunner::CProcessRunner(void)
 {
-   memset(StartupDir,0,sizeof(StartupDir));
-   memset(ExeName,0,sizeof(ExeName));
+  Reset();
 }
 
 
-CCompilerRunner::~CCompilerRunner(void)
+CProcessRunner::~CProcessRunner(void)
 {
 }
 
-int CCompilerRunner::Run()
+BOOL CProcessRunner::Reset()
 {
-   if(ExeName[0]==_T('\0'))
+   ZeroVar(StartupDir);
+   ZeroVar(ExePath);
+   ZeroVar(ExeFullPath);
+   return TRUE;
+}
+
+BOOL CProcessRunner::SetStartupDir(const TCHAR *Dir)
+{
+   if(!Dir||!Dir[0])
    {
-      return 1;
+      _tgetcwd(StartupDir,MAX_PATH-1);
+      return TRUE;
+   }
+   if(PathIsRelative(Dir))
+   {
+      TCHAR TmpPath[MAX_PATH];
+      _tgetcwd(TmpPath,MAX_PATH-1);
+      PathAppend(TmpPath,Dir);
+      PathCanonicalize(StartupDir,TmpPath);
    }
 
-   
+   if(!FS.DirExists(Dir))
+   {
+      _ftprintf(stderr, _T("Directory \"%s\" not exists.\n"),Dir);
+      return FALSE;
+   }
+   _tcscpy_s(StartupDir,Dir);
+   return TRUE;
+}
+
+BOOL CProcessRunner::SetProgram(const TCHAR *Prog)
+{
+   if(!Prog)
+   {
+      return FALSE;
+   }
+   if(!PathIsRelative(Prog))
+   {
+      if(!PathFileExists(Prog))
+      {
+         _ftprintf(stderr, _T("Path \"%s\" not exists.\n"),Prog);
+         return FALSE;
+      }
+      _tcscpy_s(ExePath,Prog);
+      _tcscpy_s(ExeFullPath,Prog);
+   }
+   else
+   {
+      _tcscpy_s(ExePath,Prog);
+   }
+   return TRUE;
+}
+
+int CProcessRunner::Run()
+{
+  
+   if(!ExePath[0])
+   {
+      _ftprintf(stderr, _T("ExePath is NULL!!!\n"));
+      return 1;
+   }
+   BOOL ExePathContainsSeparator=FALSE;
+   size_t ExePathSeparatorPos=NULL;
+   TCHAR tmpChar;
+   ExePathContainsSeparator=FS.PathContainsSeparator(ExePath,&ExePathSeparatorPos);
+
+   if(!StartupDir[0])
+   {
+      SetStartupDir(NULL);
+   }
    HANDLE g_hChildStd[ST_Max][H_Max];//={{NULL,NULL},{NULL,NULL}};
    STARTUPINFO si;
    PROCESS_INFORMATION pi;
@@ -28,8 +91,9 @@ int CCompilerRunner::Run()
    ZeroMemory( &si, sizeof(si) );
    ZeroMemory( &pi, sizeof(pi) );
 	SECURITY_ATTRIBUTES saAttr; 
-
-   auto Cleanup=[this,&pi,&si,&g_hChildStd]()
+   TCHAR *FullCmdLine=NULL;
+   size_t FullCmdLineLen=NULL;
+   auto Cleanup=[this,&pi,&si,&g_hChildStd,&FullCmdLine]()
    {
       //уборка
       if(pi.hThread)
@@ -54,7 +118,14 @@ int CCompilerRunner::Run()
             }
          }
       }
+      if(FullCmdLine)
+      {
+         delete [] FullCmdLine;
+         FullCmdLine=NULL;
+      }
    };
+
+   
 	// Set the bInheritHandle flag so pipe handles are inherited. 
 
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
@@ -98,7 +169,7 @@ int CCompilerRunner::Run()
 	si.hStdOutput = g_hChildStd[ST_Out][H_Write];
 	si.dwFlags |= STARTF_USESTDHANDLES;
 	
-
+#if 0
 	
 
 	if( !CreateProcess( NULL, // Нет имени модуля (используется командная строка).
@@ -237,6 +308,9 @@ int CCompilerRunner::Run()
 	 Cleanup();
     if(WasStdErrUsed)
         fprintf(stderr,"\rFinished with code: %i\r___________________________________________________\r",exit);
-	return exit;
 
+    
+	return exit;
+#endif
+   return 0;
 }

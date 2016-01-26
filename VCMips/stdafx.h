@@ -25,3 +25,4 @@
 
 
 #define DISPATCH_CAST(what) reinterpret_cast<IDispatch**>(&what)
+#define ZeroVar(var) ZeroMemory(var,sizeof(var))

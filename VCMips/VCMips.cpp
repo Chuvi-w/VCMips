@@ -7,10 +7,30 @@
 #include "CMD5.h"
 #include "FileSystem.h"
 #include "CommandLine.h"
+#include "ProcessRunner.h"
+
+
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-
+   TCHAR ExePath[MAX_PATH];
+   CFileSystem FS;
+   BOOL Ex=FS.DirExists(_T("\0"));
+   size_t spos=30;
+   _stprintf(ExePath,_T("C:\\lalala\\lol.exe"));
+   FS.PathContainsSeparator(ExePath,&spos);
+   
+   for(auto c=&ExePath[_tcslen(ExePath)];c>ExePath;--c)
+   {
+      if(*c==_T('\\')||*c==_T('/'))
+      {
+         break;
+      }
+   }
+   CProcessRunner CR;
+   CR.SetStartupDir(_T("..\\dddd\\"));
+   CR.SetProgram(_T("\\test.rxe"));
+   CR.Run();
 
    CCommandLine Cmd;
    TCHAR TestStr[50];
@@ -54,8 +74,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 1;
 	}
 //	VCProj->CreateProject(_T("D:\\Stuff\\Progs\\VSProjReader\Test.vcxproj"));
-	VCProj->OpenProject(_T("D:\\Stuff\\Progs\\VSProjReader\\EmptyProj\\EmptyProj.vcxproj"));
-	//VCProj->OpenProject(_T("D:/Stuff/Progs/VCMips/TestPrj_2013/TestPrj_2013.vcxproj"));
+	//VCProj->OpenProject(_T("D:\\Stuff\\Progs\\VSProjReader\\EmptyProj\\EmptyProj.vcxproj"));
+	VCProj->OpenProject(_T("D:\\Work\\USK\\USK50_PO\\USK50_PO-D_MG\\USK50_PO-D_MG.vcxproj"));
   // VCProj->OpenProject(argv[1]);
   // VCProj->ForEachFile(NULL);
    delete VCProj;

@@ -101,6 +101,17 @@ void CCommandLine::ParseLine(TCHAR *Line)
    } while (*c);
 }
 
+size_t CCommandLine::GetLength()
+{
+   int BuffLen=0;
+   for(auto a=Params.begin();a<Params.end();++a)
+   {
+      BuffLen+=_tcslen((*a))+1;
+   }
+   //BuffLen--;
+   return BuffLen;
+}
+
 TCHAR * CCommandLine::operator()()
 {
    if(!Params.size())
@@ -112,12 +123,9 @@ TCHAR * CCommandLine::operator()()
       delete [] CmdBuf;
       CmdBuf=0;
    }
-   int BuffLen=0;
-   for(auto a=Params.begin();a<Params.end();++a)
-   {
-      BuffLen+=_tcslen((*a))+1;
-   }
+   size_t BuffLen=30;//GetLength();
    CmdBuf=new TCHAR[BuffLen];
+   /*
    int Len=0;
    for(auto a=Params.begin();a<Params.end();++a)
    {
@@ -128,7 +136,45 @@ TCHAR * CCommandLine::operator()()
    }
    Len--;
    CmdBuf[Len]=_T('\0');
+   */
+   size_t TLen=(*this)(CmdBuf,BuffLen);
    return CmdBuf;
+}
+
+size_t CCommandLine::operator()(TCHAR *szParamsLine,size_t szInSymbols)
+{
+   if(!szParamsLine||!szInSymbols)
+   {
+      return NULL;
+   }
+   if(!Params.size())
+   {
+      *szParamsLine=_T('\0');
+      return NULL;
+   }
+   ZeroMemory(szParamsLine,szInSymbols*sizeof(TCHAR));
+   size_t Len=0;
+   size_t ParamLen=NULL;
+   for(auto a=Params.begin();a<Params.end();++a)
+   {
+      ParamLen=_tcslen((*a));
+      if(Len+ParamLen+2>szInSymbols)
+      {
+         break;
+      }
+      
+      if(szParamsLine[0])
+      {
+         szParamsLine[Len]=_T(' ');
+         Len++;
+      }
+      //_tcscat_s(szParamsLine,ParamLen+2,(*a));
+      _tcscpy_s(&szParamsLine[Len],ParamLen+1/*szInSymbols-Len*/,(*a));
+      Len+=ParamLen;
+   }
+   //Len--;
+   //CmdBuf[Len]=_T('\0');
+   return _tcslen(szParamsLine);
 }
 
 TCHAR* CCommandLine::TrimSpaces(const TCHAR *Str)

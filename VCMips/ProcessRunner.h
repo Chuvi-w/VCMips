@@ -3,15 +3,16 @@
 #include <vector>
 #include "CommandLine.h"
 #include "FileSystem.h"
-class CCompilerRunner
+class CProcessRunner
 {
 public:
-   CCompilerRunner(void);
-   ~CCompilerRunner(void);
-   BOOL Init();
+   CProcessRunner(void);
+   ~CProcessRunner(void);
+   BOOL Reset();
    BOOL SetStartupDir(const TCHAR *Dir);
    BOOL SetProgram(const TCHAR *Prog);
    BOOL SetStdOutFile(const TCHAR *FilePath);
+   
    int Run();
 private:
    enum 
@@ -30,7 +31,8 @@ private:
    CCommandLine Cmd;
    CFileSystem FS;
    TCHAR StartupDir[MAX_PATH];
-   TCHAR ExeName[MAX_PATH];
+   TCHAR ExePath[MAX_PATH];
+   TCHAR ExeFullPath[MAX_PATH];
 };
 
 #endif // CompilerRunner_h__

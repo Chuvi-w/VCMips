@@ -22,10 +22,11 @@ class CFileSystem
 public:
 	CFileSystem();
 	~CFileSystem();
-	BOOL DirExists(TCHAR *Directory,BOOL *isEmpty=NULL);
+	BOOL DirExists(const TCHAR *Directory,BOOL *isEmpty=NULL);
 	BOOL CompareDirs(TCHAR *Dir1, TCHAR *Dir2);
 	BOOL CopyDir(TCHAR *Src, TCHAR *Dst);
    BOOL RemoveDir(TCHAR *Dir,BOOL MakeEmpty=FALSE);
+   BOOL PathContainsSeparator(TCHAR *Path,size_t *LastSeparatorPos=NULL);
 	std::vector<FileInfo_t> GetDirectoryInfo(TCHAR *Directory, std::vector<FileInfo_t> *fi = NULL);
 private:
 
