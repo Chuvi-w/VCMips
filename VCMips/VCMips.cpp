@@ -74,8 +74,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 1;
 	}
 //	VCProj->CreateProject(_T("D:\\Stuff\\Progs\\VSProjReader\Test.vcxproj"));
-	//VCProj->OpenProject(_T("D:\\Stuff\\Progs\\VSProjReader\\EmptyProj\\EmptyProj.vcxproj"));
-	VCProj->OpenProject(_T("D:\\Work\\USK\\USK50_PO\\USK50_PO-D_MG\\USK50_PO-D_MG.vcxproj"));
+	VCProj->OpenProject(_T("D:\\Stuff\\LV_OLU\\CppProj\\CppProj.vcxproj"));
+	//VCProj->OpenProject(_T("D:\\Work\\USK\\USK50_PO\\USK50_PO-D_MG\\USK50_PO-D_MG.vcxproj"));
   // VCProj->OpenProject(argv[1]);
   // VCProj->ForEachFile(NULL);
    delete VCProj;

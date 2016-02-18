@@ -12,10 +12,10 @@
 //#import <dte90.olb>			VCPImportSettings
 //#import <dte90a.olb>			VCPImportSettings
 //#import <dte100.olb>			VCPImportSettings
-  #import <vcpb2.tlb>				VCPImportSettings rename( "GetObject", "GetObjectX" ) rename( "PropertySheet", "PropertySheetX" ) rename( "event", "eventX" )
+ #import <vcpb2.tlb>				VCPImportSettings rename( "GetObject", "GetObjectX" ) rename( "PropertySheet", "PropertySheetX" ) rename( "event", "eventX" )
 // #import <vcproject.dll>		VCPImportSettings
-// #import <vcpkg.dll>			VCPImportSettings
-// #import <vslangproj.olb>	VCPImportSettings
+ //#import <vcpkg.dll>			VCPImportSettings
+ //#import <vslangproj.olb>	VCPImportSettings
  
 
 class CFormatedException :public std::exception
@@ -110,15 +110,16 @@ public:
 class CProjectConfiguration
 {
 public:
-   CProjectConfiguration(const TCHAR *PlatformName,const TCHAR *ConfigName);
+   CProjectConfiguration(const TCHAR *PlatformName,const TCHAR *ConfigName, CComPtr<IDispatch> pConfigDispatch);
    ~CProjectConfiguration();
    void AddUserMacro(const TCHAR *Name,const TCHAR *Value,BOOL EnvSet,const TCHAR *FilePath);
    const TCHAR *GetMacroValue(const TCHAR* Name,BOOL *EnvSet=NULL,const TCHAR **FilePath=NULL);
-
+   void PrintConfigurationData();
 private:
    TCHAR *szPlatName;
    TCHAR *szConfigName;
    TCHAR *szUserMacroFile;
+   CComPtr<IDispatch> ConfigurationDispatch;
    std::vector<UserMacro_t*> UserMacros;
    std::vector<CFileInfo*> ProjectFiles;
 };

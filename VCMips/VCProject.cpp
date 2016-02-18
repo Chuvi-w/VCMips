@@ -2,62 +2,58 @@
 #include "VCProject.h"
 #include <cerrno>
 
-#define DispVar(var) _disp_##var
-#define ColVar(var) var##Collection
-#define DispColVar(var) _disp_##var##Collection
-#define ColCountVar(var) _##var##Collection_Count
+#define DispatchVar(var) _disp_##var
+#define CollectionVar(var) var##Collection
+#define DispCollectionVar(var) _disp_##var##Collection
+#define CollectionCountVar(var) _##var##Collection_Count
 
-#define FromDisp(var) var=DispVar(var)
-#define FromCDisp(var) ColVar(var)=DispColVar(var)
-#define QiPtrD(type,var)\
-   CComPtr<IDispatch> DispVar(var)=0;\
+#define FromDispatch(var) var=DispatchVar(var)
+#define FromCollectionDispatch(var) CollectionVar(var)=DispCollectionVar(var)
+#define QiPtrDispatch(type,var)\
+   CComPtr<IDispatch> DispatchVar(var)=0;\
    CComQIPtr<type> var;
 
-#define QiPtrDC(type,var)\
-   QiPtrD(IVCCollection,ColVar(var));\
-   QiPtrD(type,var);\
-   long ColCountVar(var)=NULL;
+#define QiPtrDispatchCollection(type,var)\
+   QiPtrDispatch(IVCCollection,CollectionVar(var));\
+   QiPtrDispatch(type,var);\
+   long CollectionCountVar(var)=NULL;
 
 
 
 #define IfSafeCallFails(Func)\
-   hr=Func;\
-   if(FAILED(hr))
+   if(FAILED(Func))
 
 #define IfSafeCallFailsArgs(Func,...)\
-   hr=Func;\
-   if(FAILED(hr)||__VA_ARGS__)
+   if(FAILED(Func)||__VA_ARGS__)
 
 
 #define IfSafeCallSucceeded(Func)\
-   hr=Func;\
-   if(SUCCEEDED(hr))
+   if(SUCCEEDED(Func))
 
 #define IfSafeCallSucceededArgs(Func,...)\
-   hr=Func;\
-   if(SUCCEEDED(hr)&&__VA_ARGS__)
+   if(SUCCEEDED(Func)&&__VA_ARGS__)
 
 
 
 
-#define SafeGetCollectionCountFails(var)\
-   IfSafeCallFailsArgs(ColVar(var)->get_Count(&ColCountVar(var)),!ColCountVar(var))
+#define IfSafeGetCollectionCountFails(var)\
+   IfSafeCallFailsArgs(CollectionVar(var)->get_Count(&CollectionCountVar(var)),!CollectionCountVar(var))
 
-#define SafeGetCollectionItemFails(var,num)\
-   IfSafeCallFailsArgs(ColVar(var)->Item(num,&DispVar(var)),!DispVar(var))
+#define IfSafeGetCollectionItemFails(var,num)\
+   IfSafeCallFailsArgs(CollectionVar(var)->Item(num,&DispatchVar(var)),!DispatchVar(var))
 
 
-#define SafeGetCollectionCountSucceeded(var)\
-   IfSafeCallSucceededArgs(ColVar(var)->get_Count(&ColCountVar(var)),ColCountVar(var))
+#define IfSafeGetCollectionCountSucceeded(var)\
+   IfSafeCallSucceededArgs(CollectionVar(var)->get_Count(&CollectionCountVar(var)),CollectionCountVar(var))
 
-#define SafeGetCollectionItemSucceeded(var,num)\
-   IfSafeCallSucceededArgs(ColVar(var)->Item(num,&DispVar(var)),DispVar(var))
+#define IfSafeGetCollectionItemSucceeded(var,num)\
+   IfSafeCallSucceededArgs(CollectionVar(var)->Item(num,&DispatchVar(var)),DispatchVar(var))
 
 
 using namespace VCProjectEngineLibrary;
 CVCProject::CVCProject() :CBaseProject(this)
 {
-	HRESULT hr;
+	
    _tgetcwd(szCurWD,MAX_PATH-1);
    _sntprintf_s(szComponentsInternalDir,MAX_PATH-1,_T("%s\\ProjectComponents"),szCurWD);
    if(!GetComponentsBase())
@@ -108,9 +104,9 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    {
       CloseProject();
    }
-   CComPtr<IDispatch> DispVar(VCProject) = VCProject;
+   CComPtr<IDispatch> DispatchVar(VCProject) = VCProject;
    HRESULT hr = S_FALSE;
-   IfSafeCallFailsArgs(VCEngine->LoadProject(CComBSTR(szProjectFileName), &DispVar(VCProject)),!DispVar(VCProject))
+   IfSafeCallFailsArgs(VCEngine->LoadProject(CComBSTR(szProjectFileName), &DispatchVar(VCProject)),!DispatchVar(VCProject))
    {
       _ftprintf(stderr, _T("Error: unable to load \"%s\" (%x).\n"),szProjectFileName,HRESULT_CODE(hr));
       return FALSE;
@@ -119,14 +115,14 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    BSTR bsProjectName=NULL;
  
    
-   FromDisp(VCProject);
+   FromDispatch(VCProject);
    bChanged=FALSE;
 
 
-   QiPtrDC(VCConfiguration,PrjConfig);
-   QiPtrDC(VCPropertySheet,PropSheet);
-   QiPtrD(VCPlatform,Platform);
-   QiPtrDC(VCUserMacro,UserMacro);
+   QiPtrDispatchCollection(VCConfiguration,PrjConfig);
+   QiPtrDispatchCollection(VCPropertySheet,PropSheet);
+   QiPtrDispatch(VCPlatform,Platform);
+   QiPtrDispatchCollection(VCUserMacro,UserMacro);
 
    size_t PrjNameLen=0;
    IfSafeCallSucceededArgs(VCProject->get_Name(&bsProjectName),bsProjectName)
@@ -137,17 +133,30 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    }
 
 
-   IfSafeCallFailsArgs(VCProject->get_Configurations(&DispColVar(PrjConfig)),!DispColVar(PrjConfig))
+   IfSafeCallFailsArgs(VCProject->get_Configurations(&DispCollectionVar(PrjConfig)),!DispCollectionVar(PrjConfig))
    {
       _ftprintf(stderr, _T("Error: unable to get configurations from \"%s\" (%x).\n"),GetProjectName(),HRESULT_CODE(hr));
       return FALSE;
    }
    
-   FromCDisp(PrjConfig);
-   long NumConfigs=0;
-   SafeGetCollectionCountFails(PrjConfig)
+   FromCollectionDispatch(PrjConfig);
+   IfSafeGetCollectionCountFails(PrjConfig)
    {
       _ftprintf(stderr, _T("Error: Failed to count configurations in \"%s\" (%x).\n"),GetProjectName(),HRESULT_CODE(hr));
+      return FALSE;
+   }
+
+   QiPtrDispatchCollection(VCFile,PrjFile);
+   QiPtrDispatchCollection(VCFileConfiguration,FileConfiguration);
+   IfSafeCallFailsArgs(VCProject->get_Files(&DispCollectionVar(PrjFile)),!DispCollectionVar(PrjFile))
+   {
+      _ftprintf(stderr, _T("Error: unable to get project files from \"%s\".\n"),GetProjectName());
+      return FALSE;
+   }
+   FromCollectionDispatch(PrjFile);
+   IfSafeGetCollectionCountFails(PrjFile)
+   {
+      _ftprintf(stderr, _T("Error: Failed to count files in \"%s\".\n"),GetProjectName());
       return FALSE;
    }
 
@@ -158,73 +167,75 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    BSTR PropSheetName;
    BSTR MacroName;
    BSTR MacroValue;
+   //BSTR OutputDir;
+   //BSTR IntermediateDir;
    VARIANT_BOOL vbMacroEnvSet;
    CProjectConfiguration *gConfItem;
 
-
-   for(int CfgNum=1;CfgNum<=ColCountVar(PrjConfig);CfgNum++)
+   _ftprintf(stderr,_T("Num configs=%i\n"),CollectionCountVar(PrjConfig));
+   for(int ConfigurationNum=0;ConfigurationNum<=CollectionCountVar(PrjConfig);ConfigurationNum++)
    {
-      DispVar(PrjConfig)=NULL;
-      DispVar(PropSheet)=NULL;
-      DispVar(Platform)=NULL;
+      DispatchVar(PrjConfig)=NULL;
+      DispatchVar(PropSheet)=NULL;
+      DispatchVar(Platform)=NULL;
       CfgName=NULL;
       PlatformName=NULL;
 
-      SafeGetCollectionItemFails(PrjConfig,CComVariant(CfgNum))
+      IfSafeGetCollectionItemFails(PrjConfig,CComVariant(ConfigurationNum))
       {
          continue;
       }
-      FromDisp(PrjConfig);
+      FromDispatch(PrjConfig);
       IfSafeCallFails(PrjConfig->get_ConfigurationName(&CfgName))
       {
-         _ftprintf(stderr, _T("Warning: Failed to get name in \"%s\" for configuration item %i. (Err=%x).\n"),GetProjectName(),CfgNum,HRESULT_CODE(hr));
+         _ftprintf(stderr, _T("Warning: Failed to get name in \"%s\" for configuration item %i. (Err=%x).\n"),GetProjectName(),ConfigurationNum,HRESULT_CODE(hr));
          continue;
       }
-      IfSafeCallFailsArgs(PrjConfig->get_Platform(&DispVar(Platform)),!DispVar(Platform))
+      IfSafeCallFailsArgs(PrjConfig->get_Platform(&DispatchVar(Platform)),!DispatchVar(Platform))
       {
          _ftprintf(stderr, _T("Warning: Failed to get platform item for %s configuration in \"%s\" (%x).\n"),CfgName,GetProjectName(),HRESULT_CODE(hr));
       }
       else
       {
-         FromDisp(Platform);
+         FromDispatch(Platform);
          IfSafeCallFails(Platform->get_Name(&PlatformName))
          {
             _ftprintf(stderr, _T("Warning: Failed to get platform name for %s configuration in \"%s\" (%x).\n"),CfgName,GetProjectName(),HRESULT_CODE(hr));
          }
       }
-      gConfItem=new CProjectConfiguration(OLE2CT(PlatformName),OLE2CT(CfgName));
+      gConfItem=new CProjectConfiguration(OLE2CT(PlatformName),OLE2CT(CfgName),DispatchVar(PrjConfig));
 
-      IfSafeCallFailsArgs(PrjConfig->get_PropertySheets(&DispColVar(PropSheet)),!DispColVar(PropSheet))
+      IfSafeCallFailsArgs(PrjConfig->get_PropertySheets(&DispCollectionVar(PropSheet)),!DispCollectionVar(PropSheet))
       {
          _ftprintf(stderr, _T("Warning: Failed to get property sheets in %s|%s configuration in \"%s\" (%x).\n"),CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
       }
       else
       {
         
-         FromCDisp(PropSheet);
-         SafeGetCollectionCountFails(PropSheet)
+         FromCollectionDispatch(PropSheet);
+         IfSafeGetCollectionCountFails(PropSheet)
          {
             _ftprintf(stderr, _T("Warning: Failed to count property sheets in %s|%s configuration in \"%s\" (%x).\n"),CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
          }
          else
          {
-            _tprintf(_T(" %s Num ps=%i\n"),OLE2CT(CfgName),ColCountVar(PropSheet));
+            //_tprintf(_T(" %s Num ps=%i\n"),OLE2CT(CfgName),CollectionCountVar(PropSheet));
 
-            for(int PropSheetNum=1;PropSheetNum<=ColCountVar(PropSheet);PropSheetNum++)
+            for(int PropSheetNum=1;PropSheetNum<=CollectionCountVar(PropSheet);PropSheetNum++)
             {
-               DispVar(PropSheet)=NULL;
-               DispVar(UserMacro)=NULL;
-               DispColVar(UserMacro)=NULL;
+               DispatchVar(PropSheet)=NULL;
+               DispatchVar(UserMacro)=NULL;
+               DispCollectionVar(UserMacro)=NULL;
                PropSheetName=NULL;
                PropSheetFile=NULL;
 
-               SafeGetCollectionItemFails(PropSheet,CComVariant(PropSheetNum))
+               IfSafeGetCollectionItemFails(PropSheet,CComVariant(PropSheetNum))
                {
-               _ftprintf(stderr, _T("Warning: Failed to get property sheet item %i in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
+                  _ftprintf(stderr, _T("Warning: Failed to get property sheet item %i in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
                }
                else
                {
-                  FromDisp(PropSheet);
+                  FromDispatch(PropSheet);
                   IfSafeCallFails(PropSheet->get_Name(&PropSheetName))
                   {
                      _ftprintf(stderr, _T("Warning: Failed to get property sheet item(%i) name in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
@@ -233,18 +244,18 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
                   {
                      _ftprintf(stderr, _T("Warning: Failed to get property sheet item(%i) file in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
                   }
-                  _ftprintf(stderr, _T("Warning: \"%s\" \"%s\"\n"),PropSheetName,PropSheetFile);
-                  IfSafeCallSucceededArgs(PropSheet->get_UserMacros(&ColVar(UserMacro)),ColVar(UserMacro))
+                  //_ftprintf(stderr, _T("Warning: \"%s\" \"%s\"\n"),OLE2CT(PropSheetName),OLE2CT(PropSheetFile));
+                  IfSafeCallSucceededArgs(PropSheet->get_UserMacros(&CollectionVar(UserMacro)),CollectionVar(UserMacro))
                   {
-                     SafeGetCollectionCountSucceeded(UserMacro)
+                     IfSafeGetCollectionCountSucceeded(UserMacro)
                      {
-                        for(int UserMacroNum=0;UserMacroNum<=ColCountVar(UserMacro);UserMacroNum++)
+                        for(int UserMacroNum=0;UserMacroNum<=CollectionCountVar(UserMacro);UserMacroNum++)
                         {
                            //  printf("Um %i\n",UserMacroNum);
-                           DispVar(UserMacro)=NULL;
-                           SafeGetCollectionItemSucceeded(UserMacro,CComVariant(UserMacroNum))
+                           DispatchVar(UserMacro)=NULL;
+                           IfSafeGetCollectionItemSucceeded(UserMacro,CComVariant(UserMacroNum))
                            {
-                              FromDisp(UserMacro);
+                              FromDispatch(UserMacro);
                               MacroName=NULL;
                               MacroValue=NULL;
                               vbMacroEnvSet=VARIANT_FALSE;
@@ -257,19 +268,21 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
                               }
                            }
                            UserMacro.Release();
-                           DispVar(UserMacro).Release();
+                           DispatchVar(UserMacro).Release();
                         }
                      }
                   }
 
-                  ColVar(UserMacro).Release();
+                  CollectionVar(UserMacro).Release();
                   PropSheet.Release();
                }
             }
-            ColVar(PropSheet).Release();
+            CollectionVar(PropSheet).Release();
          }
-         DispColVar(PropSheet).Release();
+         DispCollectionVar(PropSheet).Release();
       }
+
+      _ftprintf(stderr,_T("Prj=%p\n"),DispatchVar(PrjConfig));
       PrjConfig.Release();
       Configs.push_back(gConfItem);
    }
@@ -277,6 +290,72 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    {
       _ftprintf(stderr, _T("Error: Failed to load any configuration from \"%s\" (%x).\n"),szProjectFileName,HRESULT_CODE(hr));
       return FALSE;
+   }
+
+   for(auto a=Configs.begin();a<Configs.end();++a)
+   {
+      (*a)->PrintConfigurationData();
+   }
+
+
+
+   _ftprintf(stderr, _T("NumFiles=%i\n"),CollectionCountVar(PrjFile));
+
+   BSTR FileName;
+   BSTR FileConfigurationName;
+   QiPtrDispatch(VCConfiguration,TPrjConfig);
+   for(int FileNum=0;FileNum<=CollectionCountVar(PrjFile);++FileNum)
+   {
+
+      DispatchVar(PrjFile)=NULL;
+      DispatchVar(FileConfiguration)=NULL;
+      DispCollectionVar(FileConfiguration)=NULL;
+      DispatchVar(FileConfiguration)=NULL;
+      FileName=NULL;
+      IfSafeGetCollectionItemFails(PrjFile,CComVariant(FileNum))
+      {
+         continue;
+      }
+      FromDispatch(PrjFile);
+      IfSafeCallFails(PrjFile->get_Name(&FileName))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get file name in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
+         continue;
+      }
+      _ftprintf(stderr, _T("FileName=%s\n"),OLE2CT(FileName));
+
+      IfSafeCallFailsArgs(PrjFile->get_FileConfigurations(&DispCollectionVar(FileConfiguration)),!DispCollectionVar(FileConfiguration))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get configurations for %s= configuration in \"%s\".\n"),OLE2CT(FileName),GetProjectName());
+         continue;
+      }
+     
+      FromCollectionDispatch(FileConfiguration);
+      IfSafeGetCollectionCountFails(FileConfiguration)
+      {
+         _ftprintf(stderr, _T("Error: Failed to count filconfigurations for %s in \"%s\".\n"),OLE2CT(FileName),GetProjectName());
+         return FALSE;
+      }
+      _ftprintf(stderr, _T("FileConfigurations=%i\n"),CollectionCountVar(FileConfiguration));
+      for(int FileConfigNum=0;FileConfigNum<=CollectionCountVar(FileConfiguration);++FileConfigNum)
+      {
+         DispatchVar(FileConfiguration)=NULL;
+         DispatchVar(TPrjConfig)=NULL;
+         FileConfigurationName=NULL;
+         IfSafeGetCollectionItemFails(FileConfiguration,CComVariant(FileConfigNum))
+         {
+            continue;
+         }
+         FromDispatch(FileConfiguration);
+         IfSafeCallFails(FileConfiguration->get_Name(&FileConfigurationName))
+         {
+            _ftprintf(stderr, _T("Warning: Failed to get configuration name %i for file %s in \"%s\"\n"),FileConfigNum,OLE2CT(FileName),GetProjectName());
+            continue;
+         }
+         FileConfiguration->get_ProjectConfiguration(&DispatchVar(TPrjConfig));
+
+         _ftprintf(stderr, _T("Config %i \"%s\" %p\n"),FileConfigNum,OLE2CT(FileConfigurationName),DispatchVar(TPrjConfig));
+      }
    }
    return TRUE;
 }
@@ -572,7 +651,7 @@ BOOL CVCProject::DeleteComponents()
 
 
 
-CProjectConfiguration::CProjectConfiguration(const TCHAR *PlatformName,const TCHAR *ConfigName)
+CProjectConfiguration::CProjectConfiguration(const TCHAR *PlatformName,const TCHAR *ConfigName,CComPtr<IDispatch> pConfigDispatch)
 {
     size_t len=0;
    szPlatName=NULL;
@@ -591,6 +670,8 @@ CProjectConfiguration::CProjectConfiguration(const TCHAR *PlatformName,const TCH
       szConfigName=new TCHAR[len];
       _tcscpy_s(szConfigName,len,ConfigName);
    }
+
+   ConfigurationDispatch=pConfigDispatch;
    ProjectFiles.clear();
    UserMacros.clear();
 }
@@ -656,7 +737,7 @@ void CProjectConfiguration::AddUserMacro(const TCHAR *Name,const TCHAR *Value,BO
    }
    Macro->bEnvSet=EnvSet;
    UserMacros.push_back(Macro);
-    _ftprintf(stderr,_T("Warning: macro \"%s\" \"%s\ added \n"),Name,Value);
+   // _ftprintf(stderr,_T("Warning: macro \"%s\" \"%s\ added \n"),Name,Value);
 }
 
 const TCHAR * CProjectConfiguration::GetMacroValue(const TCHAR* Name,BOOL *EnvSet/*=NULL*/,const TCHAR **FilePath/*=NULL*/)
@@ -680,6 +761,15 @@ const TCHAR * CProjectConfiguration::GetMacroValue(const TCHAR* Name,BOOL *EnvSe
 }
 
 
+
+void CProjectConfiguration::PrintConfigurationData()
+{
+   _ftprintf(stderr,_T("Config=%s, platform=%s\n"),szConfigName,szPlatName);
+   for(auto a=UserMacros.begin();a<UserMacros.end();++a)
+   {
+       _ftprintf(stderr,_T("\t [%s] \"%s\"=\"%s\" (%i)\n"),(*a)->szFilePath,(*a)->szName,(*a)->szVal,(*a)->bEnvSet);
+   }
+}
 
 CFileInfo::~CFileInfo()
 {
