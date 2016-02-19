@@ -23,35 +23,39 @@ CCommandLine::~CCommandLine(void)
    }
 }
 
-void CCommandLine::AddParam(const TCHAR *Param)
+BOOL CCommandLine::AddParam(const TCHAR *Param)
 {
    
    auto tParam=TrimSpaces(Param);
    if(!tParam)
    {
-      return;
+      return FALSE;
    }
    int len=_tcslen(tParam);
    Params.push_back(new TCHAR[len+1]);
    _tcscpy_s(Params.back(),len+1,tParam);
    delete [] tParam;
+   return TRUE;
 }
 
-void CCommandLine::RemoveParam(const TCHAR *Param)
+BOOL CCommandLine::RemoveParam(const TCHAR *Param)
 {
    
    auto tParam=TrimSpaces(Param);
    if(!tParam)
    {
-      return;
+      return FALSE;
    }
-   auto Cur = Params.begin();
-   while (Cur != Params.end())
+   size_t Cur=0;
+   //auto Cur = Params.begin();
+   BOOL Removed=FALSE;
+   while (Cur<Params.size())
    {
-      if (!_tcsicmp((*Cur),tParam))
+      if (!_tcsicmp((Params[Cur]),tParam))
       {
-         delete *Cur;
-         Params.erase(std::remove(Params.begin(), Params.end(), *Cur), Params.end());
+         delete Params[Cur];
+         Params.erase(std::remove(Params.begin(), Params.end(),Params[Cur]), Params.end());
+         Removed=TRUE;
       }
       else
       {
@@ -59,14 +63,15 @@ void CCommandLine::RemoveParam(const TCHAR *Param)
       }
    }
    delete [] tParam;
+   return Removed;
 }
 
-void CCommandLine::ParseLine(TCHAR *Line)
+BOOL CCommandLine::ParseLine(const TCHAR *Line)
 {
    auto TLine=TrimSpaces(Line);
    if(!TLine)
    {
-      return;
+      return FALSE;
    }
    TCHAR *CurParam=TLine;
    TCHAR *c=TLine;
@@ -76,10 +81,6 @@ void CCommandLine::ParseLine(TCHAR *Line)
       if(*c==_T('"'))
       {
          NQuot=!NQuot;
-        /* if(!NQuot)
-         {
-            c++;
-         }*/
       }
       if( _istspace(*c)&&!NQuot)
       {
@@ -99,6 +100,26 @@ void CCommandLine::ParseLine(TCHAR *Line)
       }
       
    } while (*c);
+
+   BOOL RemoveFlag=FALSE;
+   size_t Cur=0;
+   while(Cur<Params.size())
+   {
+      if(_tcsicmp(Params[Cur],_T(">>"))==0||_tcsicmp(Params[Cur],_T(">"))==0)
+      {
+         RemoveFlag=TRUE;
+      }
+      if(RemoveFlag)
+      {
+         RemoveParam(Params[Cur]);
+      }
+      else
+      {
+         ++Cur;
+      }
+   }
+
+   return Params.size()>0;
 }
 
 size_t CCommandLine::GetLength()
@@ -123,7 +144,7 @@ TCHAR * CCommandLine::operator()()
       delete [] CmdBuf;
       CmdBuf=0;
    }
-   size_t BuffLen=30;//GetLength();
+   size_t BuffLen=GetLength();
    CmdBuf=new TCHAR[BuffLen];
    /*
    int Len=0;

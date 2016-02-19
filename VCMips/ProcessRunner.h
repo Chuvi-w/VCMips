@@ -12,7 +12,9 @@ public:
    BOOL SetStartupDir(const TCHAR *Dir);
    BOOL SetProgram(const TCHAR *Prog);
    BOOL SetStdOutFile(const TCHAR *FilePath);
-   
+   BOOL AddCommandLine(TCHAR *CmdLine);
+   BOOL AddCmdParam(TCHAR *Param);
+   BOOL RemoveCmdParam(TCHAR *Param);
    int Run();
 private:
    enum 
@@ -33,6 +35,7 @@ private:
    TCHAR StartupDir[MAX_PATH];
    TCHAR ExePath[MAX_PATH];
    TCHAR ExeFullPath[MAX_PATH];
+   TCHAR szStdOutPath[MAX_PATH];
 };
 
 #endif // CompilerRunner_h__

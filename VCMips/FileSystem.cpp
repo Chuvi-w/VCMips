@@ -29,7 +29,7 @@ BOOL CFileSystem::DirExists(const TCHAR *Directory,BOOL *isEmpty/*=NULL*/)
 	return TRUE;
 }
 
-BOOL CFileSystem::RemoveDir(TCHAR *Dir,BOOL MakeEmpty)
+BOOL CFileSystem::RemoveDir(const TCHAR *Dir,BOOL MakeEmpty/*=FALSE*/)
 {
    BOOL IsEmpty=FALSE;
    if(!DirExists(Dir,&IsEmpty))
@@ -84,7 +84,7 @@ return FALSE;
 }
 
 
-std::vector<FileInfo_t> CFileSystem::GetDirectoryInfo(TCHAR *Directory, std::vector<FileInfo_t> *fi)
+std::vector<FileInfo_t> CFileSystem::GetDirectoryInfo(const TCHAR *Directory, std::vector<FileInfo_t> *fi /*= NULL*/)
 {
 	std::vector<FileInfo_t> fiBase;
 	if (!Directory || !DirExists(Directory))
@@ -143,7 +143,7 @@ std::vector<FileInfo_t> CFileSystem::GetDirectoryInfo(TCHAR *Directory, std::vec
 	return fiBase;
 }
 
-BOOL CFileSystem::CompareDirs(TCHAR *Dir1, TCHAR *Dir2)
+BOOL CFileSystem::CompareDirs(const TCHAR *Dir1, const TCHAR *Dir2)
 {
 	if (!Dir1 || !Dir2)
 	{
@@ -197,7 +197,7 @@ BOOL CFileSystem::CompareDirs(TCHAR *Dir1, TCHAR *Dir2)
 	return Valid;
 }
 
-BOOL CFileSystem::CopyDir(TCHAR *Src, TCHAR *Dst)
+BOOL CFileSystem::CopyDir(const TCHAR *Src, const TCHAR *Dst)
 {
    if(!Src||!Dst||!DirExists(Src))
    {
@@ -215,7 +215,7 @@ BOOL CFileSystem::CopyDir(TCHAR *Src, TCHAR *Dst)
    {
       if(!CreateDirectory(Dst,NULL))
       {
-         printf("%i\n",GetLastError());
+         printf("%u\n",GetLastError());
          return FALSE;
       }
    }

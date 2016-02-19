@@ -65,15 +65,14 @@ public:
 	CVCProject();
 	~CVCProject();
 	BOOL OpenProject(const TCHAR *szProjectFile);
-	BOOL CreateProject(const TCHAR *ProjectName) ;//NotImplemented(FALSE);
 	BOOL SaveProject();
    BOOL CloseProject();
-   void ForEachFile(pfnForEachFileFunc Func);
    const TCHAR *GetProjectName();
 private:
    BOOL GetComponentsBase();
    BOOL CopyComponents();
    BOOL DeleteComponents();
+   CProjectConfiguration *FindConfigurationByDispatch(CComPtr<IDispatch> pConfigDispatch);
 private:
    
 	CComPtr<VCProjectEngineLibrary::VCProjectEngine> VCEngine;
@@ -83,7 +82,8 @@ private:
    TCHAR szComponentsInternalDir[MAX_PATH];
    TCHAR ProjectFile[MAX_PATH];
    TCHAR *ProjectName;
-   BOOL bChanged;
+   TCHAR *ProjectDir;
+   BOOL bProjectChanged;
    CFileSystem Fs;
    std::vector<CProjectConfiguration*> Configs;
 };
@@ -103,8 +103,20 @@ typedef struct UserMacro_s
 class CFileInfo
 {
 public:
-   CFileInfo();
+   CFileInfo(CComPtr<IDispatch> pFileDispatch,const TCHAR *pFileName,const TCHAR *pFullPath, const TCHAR *pRelativePath, const TCHAR *pFileExtension,const TCHAR *pItemType,VCProjectEngineLibrary::eFileType inFileType);
    ~CFileInfo();
+   CComPtr<IDispatch> GetFileDispatch(){return FileDispatch;}
+   const TCHAR *GetFileName(){return const_cast<const TCHAR*>(szFileName);}
+   const TCHAR *GetRelativePath(){return szRelativePath;}
+   void PrintFileInfo();
+private:
+   CComPtr<IDispatch> FileDispatch;
+   TCHAR *szFileName;
+   TCHAR *szFullPath;
+   TCHAR *szFileExtension;
+   TCHAR *szItemType;
+   TCHAR *szRelativePath;
+   VCProjectEngineLibrary::eFileType FileType;
 };
 
 class CProjectConfiguration
@@ -115,10 +127,20 @@ public:
    void AddUserMacro(const TCHAR *Name,const TCHAR *Value,BOOL EnvSet,const TCHAR *FilePath);
    const TCHAR *GetMacroValue(const TCHAR* Name,BOOL *EnvSet=NULL,const TCHAR **FilePath=NULL);
    void PrintConfigurationData();
+   CComPtr<IDispatch> GetConfigDispatch(){return ConfigurationDispatch;}
+   BOOL AddFile(CComPtr<IDispatch> pFileDispatch,const TCHAR *pFileName,const TCHAR *pFullPath,const TCHAR *pRelativePath,const TCHAR *pFileExtension,const TCHAR *pItemType,VCProjectEngineLibrary::eFileType inFileType);
+   CFileInfo *FindFile(CComPtr<IDispatch> dpProjectFile);
+   BOOL SetOutputDir(const TCHAR *sziOutputDir);
+   BOOL SetIntermediateDir(const TCHAR *sziIntermediateDir);
+   BOOL SetProjectDir(const TCHAR *sziProjectDir);
+   const TCHAR *GetFileIntermediatePath(CFileInfo *File,const TCHAR *Ext);
 private:
    TCHAR *szPlatName;
    TCHAR *szConfigName;
    TCHAR *szUserMacroFile;
+   TCHAR *szOutputDir;
+   TCHAR *szProjectDir;
+   TCHAR *szIntermediateDir;
    CComPtr<IDispatch> ConfigurationDispatch;
    std::vector<UserMacro_t*> UserMacros;
    std::vector<CFileInfo*> ProjectFiles;

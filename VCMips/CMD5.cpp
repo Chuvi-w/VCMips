@@ -135,7 +135,7 @@ MD5Data_t CMD5::Get()
 }
 
 
-BOOL CMD5::Compare(MD5Data_t &md5)
+BOOL CMD5::Compare(const MD5Data_t &md5)
 {
 	for (int i = 0; i < 2; i++)
 	{

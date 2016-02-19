@@ -31,7 +31,7 @@ public:
 	BOOL Get(wchar_t *md5wBuf, size_t szInWords);
 	MD5Data_t Get();
 	
-	BOOL Compare(MD5Data_t &md5);
+	BOOL Compare(const MD5Data_t &md5);
 	BOOL Compare(const char *md5);
 	BOOL Compare(const wchar_t *md5);
 private:

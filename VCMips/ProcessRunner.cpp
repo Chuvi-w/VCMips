@@ -12,11 +12,25 @@ CProcessRunner::~CProcessRunner(void)
 {
 }
 
+BOOL CProcessRunner::AddCommandLine(TCHAR *CmdLine)
+{
+   return Cmd.ParseLine(CmdLine);
+}
+BOOL CProcessRunner::AddCmdParam(TCHAR *Param)
+{
+   return Cmd.AddParam(Param);
+}
+BOOL CProcessRunner::RemoveCmdParam(TCHAR *Param)
+{
+   return Cmd.RemoveParam(Param);
+}
+
 BOOL CProcessRunner::Reset()
 {
    ZeroVar(StartupDir);
    ZeroVar(ExePath);
    ZeroVar(ExeFullPath);
+   ZeroVar(szStdOutPath);
    return TRUE;
 }
 
@@ -67,6 +81,16 @@ BOOL CProcessRunner::SetProgram(const TCHAR *Prog)
    return TRUE;
 }
 
+BOOL CProcessRunner::SetStdOutFile(const TCHAR *FilePath)
+{
+   if(!FilePath||!*FilePath)
+   {
+      return FALSE;
+   }
+   _tcscpy_s(szStdOutPath,FilePath);
+   return TRUE;
+}
+
 int CProcessRunner::Run()
 {
   
@@ -93,37 +117,7 @@ int CProcessRunner::Run()
 	SECURITY_ATTRIBUTES saAttr; 
    TCHAR *FullCmdLine=NULL;
    size_t FullCmdLineLen=NULL;
-   auto Cleanup=[this,&pi,&si,&g_hChildStd,&FullCmdLine]()
-   {
-      //уборка
-      if(pi.hThread)
-      {
-         CloseHandle(pi.hThread);
-         pi.hThread=NULL;
-      }
-      if(pi.hProcess)
-      {
-          CloseHandle(pi.hProcess);
-          pi.hProcess=NULL;
-      }
-      
-      for(int st=0;st<ST_Max;st++)
-      {
-         for(int ht=0;ht<H_Max;ht++)
-         {
-            if(g_hChildStd[st][ht])
-            {
-               CloseHandle(g_hChildStd[st][ht]);
-               g_hChildStd[st][ht]=NULL;
-            }
-         }
-      }
-      if(FullCmdLine)
-      {
-         delete [] FullCmdLine;
-         FullCmdLine=NULL;
-      }
-   };
+   auto Cleanup=[this,&pi,&si,&g_hChildStd,&FullCmdLine](){if(pi.hThread) {CloseHandle(pi.hThread);  pi.hThread=NULL;}if(pi.hProcess){CloseHandle(pi.hProcess); pi.hProcess=NULL;} for(int st=0;st<ST_Max;st++){ for(int ht=0;ht<H_Max;ht++){if(g_hChildStd[st][ht]){CloseHandle(g_hChildStd[st][ht]);g_hChildStd[st][ht]=NULL;}}} if(FullCmdLine){delete [] FullCmdLine;FullCmdLine=NULL;}};
 
    
 	// Set the bInheritHandle flag so pipe handles are inherited. 
@@ -171,7 +165,7 @@ int CProcessRunner::Run()
 	
 #if 0
 	
-
+   CreateProcess
 	if( !CreateProcess( NULL, // Нет имени модуля (используется командная строка).
 		Prog,     // Командная строка.
 		NULL,                 // Дескриптор процесса не наследуемый.

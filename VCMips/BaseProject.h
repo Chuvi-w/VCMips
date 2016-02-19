@@ -18,7 +18,6 @@ public:
 	CBaseProject(CBaseProject *Child);
 	~CBaseProject();
 	virtual BOOL OpenProject(const TCHAR *ProjectName)=0;
-	virtual BOOL CreateProject(const TCHAR *ProjectName)=0;
 	virtual BOOL SaveProject()=0;
    virtual BOOL CloseProject()=0;
 

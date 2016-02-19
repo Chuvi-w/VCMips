@@ -51,6 +51,53 @@
 
 
 using namespace VCProjectEngineLibrary;
+
+
+#define CaseReturnFileType(type) case eFileType##type:{ return _T(#type);}
+const TCHAR *FileTypeToString(eFileType FileType)
+{
+   switch(FileType)
+   {
+      default: {return _T("UnknownFileType");};
+         CaseReturnFileType(Default);
+         CaseReturnFileType(CppCode);
+         CaseReturnFileType(CppClass);
+         CaseReturnFileType(CppHeader);
+         CaseReturnFileType(CppForm);
+         CaseReturnFileType(CppControl);
+         CaseReturnFileType(Text);
+         CaseReturnFileType(DEF);
+         CaseReturnFileType(IDL);
+         CaseReturnFileType(Makefile);
+         CaseReturnFileType(RGS);
+         CaseReturnFileType(RC);
+         CaseReturnFileType(RES);
+         CaseReturnFileType(XSD);
+         CaseReturnFileType(XML);
+         CaseReturnFileType(HTML);
+         CaseReturnFileType(CSS);
+         CaseReturnFileType(BMP);
+         CaseReturnFileType(ICO);
+         CaseReturnFileType(Resx);
+         CaseReturnFileType(Script);
+         CaseReturnFileType(BSC);
+         CaseReturnFileType(XSX);
+         CaseReturnFileType(CppWebService);
+         CaseReturnFileType(Asax);
+         CaseReturnFileType(AspPage);
+         CaseReturnFileType(Document);
+         CaseReturnFileType(Discomap);
+         CaseReturnFileType(CSharpFile);
+         CaseReturnFileType(ClassDiagram);
+         CaseReturnFileType(MHT);
+         CaseReturnFileType(PropertySheet);
+         CaseReturnFileType(CUR);
+         CaseReturnFileType(Manifest);
+         CaseReturnFileType(RDLC);
+         CaseReturnFileType(Filters);
+   }
+   return _T("UnknownFileType");
+}
 CVCProject::CVCProject() :CBaseProject(this)
 {
 	
@@ -86,7 +133,7 @@ CVCProject::CVCProject() :CBaseProject(this)
 	}
  
    ProjectName=NULL;
-   bChanged=FALSE;
+   bProjectChanged=FALSE;
 }
 
 
@@ -113,10 +160,11 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    }
    _tcscpy_s(ProjectFile,szProjectFileName);
    BSTR bsProjectName=NULL;
+   BSTR bsProjectDir=NULL;
  
    
    FromDispatch(VCProject);
-   bChanged=FALSE;
+   bProjectChanged=FALSE;
 
 
    QiPtrDispatchCollection(VCConfiguration,PrjConfig);
@@ -125,6 +173,7 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    QiPtrDispatchCollection(VCUserMacro,UserMacro);
 
    size_t PrjNameLen=0;
+   size_t PrjDirLen=0;
    IfSafeCallSucceededArgs(VCProject->get_Name(&bsProjectName),bsProjectName)
    {
       PrjNameLen=_tcslen(OLE2CT(bsProjectName))+1;
@@ -132,6 +181,12 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
       _tcscpy_s(ProjectName,PrjNameLen,OLE2CT(bsProjectName));
    }
 
+   IfSafeCallSucceededArgs(VCProject->get_ProjectDirectory(&bsProjectDir),bsProjectDir)
+   {
+      PrjDirLen=_tcslen(OLE2CT(bsProjectDir))+1;
+      ProjectDir=new TCHAR[PrjDirLen];
+      _tcscpy_s(ProjectDir,PrjDirLen,OLE2CT(bsProjectDir));
+   }
 
    IfSafeCallFailsArgs(VCProject->get_Configurations(&DispCollectionVar(PrjConfig)),!DispCollectionVar(PrjConfig))
    {
@@ -167,12 +222,10 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
    BSTR PropSheetName;
    BSTR MacroName;
    BSTR MacroValue;
-   //BSTR OutputDir;
-   //BSTR IntermediateDir;
    VARIANT_BOOL vbMacroEnvSet;
    CProjectConfiguration *gConfItem;
-
-   _ftprintf(stderr,_T("Num configs=%i\n"),CollectionCountVar(PrjConfig));
+   BSTR bsParamStr;
+   BSTR bsEvalutedParamStr;
    for(int ConfigurationNum=0;ConfigurationNum<=CollectionCountVar(PrjConfig);ConfigurationNum++)
    {
       DispatchVar(PrjConfig)=NULL;
@@ -180,7 +233,8 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
       DispatchVar(Platform)=NULL;
       CfgName=NULL;
       PlatformName=NULL;
-
+      bsParamStr=NULL;
+      bsEvalutedParamStr=NULL;
       IfSafeGetCollectionItemFails(PrjConfig,CComVariant(ConfigurationNum))
       {
          continue;
@@ -193,21 +247,70 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
       }
       IfSafeCallFailsArgs(PrjConfig->get_Platform(&DispatchVar(Platform)),!DispatchVar(Platform))
       {
-         _ftprintf(stderr, _T("Warning: Failed to get platform item for %s configuration in \"%s\" (%x).\n"),CfgName,GetProjectName(),HRESULT_CODE(hr));
+         _ftprintf(stderr, _T("Warning: Failed to get platform item for %s configuration in \"%s\" (%x).\n"),OLE2CT(CfgName),GetProjectName(),HRESULT_CODE(hr));
       }
       else
       {
          FromDispatch(Platform);
          IfSafeCallFails(Platform->get_Name(&PlatformName))
          {
-            _ftprintf(stderr, _T("Warning: Failed to get platform name for %s configuration in \"%s\" (%x).\n"),CfgName,GetProjectName(),HRESULT_CODE(hr));
+            _ftprintf(stderr, _T("Warning: Failed to get platform name for %s configuration in \"%s\" (%x).\n"),OLE2CT(CfgName),GetProjectName(),HRESULT_CODE(hr));
          }
       }
       gConfItem=new CProjectConfiguration(OLE2CT(PlatformName),OLE2CT(CfgName),DispatchVar(PrjConfig));
+      if(!gConfItem->SetProjectDir(ProjectDir))
+      {
+          _ftprintf(stderr, _T("Error: Failed to set project directory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+          delete gConfItem;
+          continue;
+      }
+
+      IfSafeCallFails(PrjConfig->get_OutputDirectory(&bsParamStr))
+      {
+         _ftprintf(stderr, _T("Error: Failed to get OutputDirectory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+         delete gConfItem;
+         continue;
+      }
+
+      IfSafeCallFails(PrjConfig->Evaluate(bsParamStr,&bsEvalutedParamStr))
+      {
+         _ftprintf(stderr, _T("Error: Failed to evalute  OutputDirectory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+         delete gConfItem;
+         continue;
+      }
+
+      if(!gConfItem->SetOutputDir(OLE2CT(bsEvalutedParamStr)))
+      {
+         _ftprintf(stderr, _T("Error: Failed to set OutputDirectory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+         delete gConfItem;
+         continue;
+      }
+
+      IfSafeCallFails(PrjConfig->get_IntermediateDirectory(&bsParamStr))
+      {
+         _ftprintf(stderr, _T("Error: Failed to get IntermediateDirectory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+         delete gConfItem;
+         continue;
+      }
+      
+      IfSafeCallFails(PrjConfig->Evaluate(bsParamStr,&bsEvalutedParamStr))
+      {
+         _ftprintf(stderr, _T("Error: Failed to evalute  IntermediateDirectory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+         delete gConfItem;
+         continue;
+      }
+
+      if(!gConfItem->SetIntermediateDir(OLE2CT(bsEvalutedParamStr)))
+      {
+         _ftprintf(stderr, _T("Error: Failed to set IntermediateDirectory for %s configuration in \"%s\".\n"),OLE2CT(CfgName),GetProjectName());
+         delete gConfItem;
+         continue;
+      }
+
 
       IfSafeCallFailsArgs(PrjConfig->get_PropertySheets(&DispCollectionVar(PropSheet)),!DispCollectionVar(PropSheet))
       {
-         _ftprintf(stderr, _T("Warning: Failed to get property sheets in %s|%s configuration in \"%s\" (%x).\n"),CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
+         _ftprintf(stderr, _T("Warning: Failed to get property sheets in %s|%s configuration in \"%s\" (%x).\n"),OLE2CT(CfgName),OLE2CT(PlatformName),GetProjectName(),HRESULT_CODE(hr));
       }
       else
       {
@@ -215,7 +318,7 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
          FromCollectionDispatch(PropSheet);
          IfSafeGetCollectionCountFails(PropSheet)
          {
-            _ftprintf(stderr, _T("Warning: Failed to count property sheets in %s|%s configuration in \"%s\" (%x).\n"),CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
+            _ftprintf(stderr, _T("Warning: Failed to count property sheets in %s|%s configuration in \"%s\" (%x).\n"),OLE2CT(CfgName),OLE2CT(PlatformName),GetProjectName(),HRESULT_CODE(hr));
          }
          else
          {
@@ -231,18 +334,18 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
 
                IfSafeGetCollectionItemFails(PropSheet,CComVariant(PropSheetNum))
                {
-                  _ftprintf(stderr, _T("Warning: Failed to get property sheet item %i in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
+                  _ftprintf(stderr, _T("Warning: Failed to get property sheet item %i in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,OLE2CT(CfgName),OLE2CT(PlatformName),GetProjectName(),HRESULT_CODE(hr));
                }
                else
                {
                   FromDispatch(PropSheet);
                   IfSafeCallFails(PropSheet->get_Name(&PropSheetName))
                   {
-                     _ftprintf(stderr, _T("Warning: Failed to get property sheet item(%i) name in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
+                     _ftprintf(stderr, _T("Warning: Failed to get property sheet item(%i) name in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,OLE2CT(CfgName),OLE2CT(PlatformName),GetProjectName(),HRESULT_CODE(hr));
                   }
                   IfSafeCallFails(PropSheet->get_PropertySheetFile(&PropSheetFile))
                   {
-                     _ftprintf(stderr, _T("Warning: Failed to get property sheet item(%i) file in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,CfgName,PlatformName,GetProjectName(),HRESULT_CODE(hr));
+                     _ftprintf(stderr, _T("Warning: Failed to get property sheet item(%i) file in %s|%s configuration in \"%s\" (%x).\n"),PropSheetNum,OLE2CT(CfgName),OLE2CT(PlatformName),GetProjectName(),HRESULT_CODE(hr));
                   }
                   //_ftprintf(stderr, _T("Warning: \"%s\" \"%s\"\n"),OLE2CT(PropSheetName),OLE2CT(PropSheetFile));
                   IfSafeCallSucceededArgs(PropSheet->get_UserMacros(&CollectionVar(UserMacro)),CollectionVar(UserMacro))
@@ -281,8 +384,6 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
          }
          DispCollectionVar(PropSheet).Release();
       }
-
-      _ftprintf(stderr,_T("Prj=%p\n"),DispatchVar(PrjConfig));
       PrjConfig.Release();
       Configs.push_back(gConfItem);
    }
@@ -292,18 +393,16 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
       return FALSE;
    }
 
-   for(auto a=Configs.begin();a<Configs.end();++a)
-   {
-      (*a)->PrintConfigurationData();
-   }
+   BSTR bsFileName;
+   BSTR bsFullPath;
+   BSTR bsRelativePath;
+   BSTR bsFileExtension;
+   BSTR bsItemType;
+   eFileType iFileType;
 
-
-
-   _ftprintf(stderr, _T("NumFiles=%i\n"),CollectionCountVar(PrjFile));
-
-   BSTR FileName;
-   BSTR FileConfigurationName;
-   QiPtrDispatch(VCConfiguration,TPrjConfig);
+   CProjectConfiguration *tConf;
+   VARIANT_BOOL vbFileExcluded;
+   QiPtrDispatch(VCConfiguration,LinkedProjectConfig);
    for(int FileNum=0;FileNum<=CollectionCountVar(PrjFile);++FileNum)
    {
 
@@ -311,72 +410,109 @@ BOOL CVCProject::OpenProject(const TCHAR *szProjectFileName)
       DispatchVar(FileConfiguration)=NULL;
       DispCollectionVar(FileConfiguration)=NULL;
       DispatchVar(FileConfiguration)=NULL;
-      FileName=NULL;
+      bsFileName=NULL;
+      bsFullPath=NULL;
+      bsFileExtension=NULL;
+      bsItemType=NULL;
+      bsRelativePath=NULL;
+      iFileType=eFileTypeDefault;
       IfSafeGetCollectionItemFails(PrjFile,CComVariant(FileNum))
       {
          continue;
       }
       FromDispatch(PrjFile);
-      IfSafeCallFails(PrjFile->get_Name(&FileName))
+
+      IfSafeCallFails(PrjFile->get_Name(&bsFileName))
       {
          _ftprintf(stderr, _T("Warning: Failed to get file name in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
          continue;
       }
-      _ftprintf(stderr, _T("FileName=%s\n"),OLE2CT(FileName));
+      IfSafeCallFails(PrjFile->get_FullPath(&bsFullPath))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get full path in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
+         continue;
+      }
 
+      IfSafeCallFails(PrjFile->get_RelativePath(&bsRelativePath))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get relative path in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
+         continue;
+      }
+
+      IfSafeCallFails(PrjFile->get_Extension(&bsFileExtension))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get file extension in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
+         continue;
+      }
+
+      IfSafeCallFails(PrjFile->get_ItemType(&bsItemType))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get item type in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
+      }
+
+      IfSafeCallFails(PrjFile->get_FileType(&iFileType))
+      {
+         _ftprintf(stderr, _T("Warning: Failed to get file type in \"%s\" for item %i.\n"),GetProjectName(),FileNum);
+      }
+     
       IfSafeCallFailsArgs(PrjFile->get_FileConfigurations(&DispCollectionVar(FileConfiguration)),!DispCollectionVar(FileConfiguration))
       {
-         _ftprintf(stderr, _T("Warning: Failed to get configurations for %s= configuration in \"%s\".\n"),OLE2CT(FileName),GetProjectName());
+         _ftprintf(stderr, _T("Warning: Failed to get configurations for %s= configuration in \"%s\".\n"),OLE2CT(bsFileName),GetProjectName());
          continue;
       }
      
       FromCollectionDispatch(FileConfiguration);
       IfSafeGetCollectionCountFails(FileConfiguration)
       {
-         _ftprintf(stderr, _T("Error: Failed to count filconfigurations for %s in \"%s\".\n"),OLE2CT(FileName),GetProjectName());
+         _ftprintf(stderr, _T("Error: Failed to count file configurations for %s in \"%s\".\n"),OLE2CT(bsFileName),GetProjectName());
          return FALSE;
       }
-      _ftprintf(stderr, _T("FileConfigurations=%i\n"),CollectionCountVar(FileConfiguration));
+    //  _ftprintf(stderr, _T("FileConfigurations=%i\n"),CollectionCountVar(FileConfiguration));
       for(int FileConfigNum=0;FileConfigNum<=CollectionCountVar(FileConfiguration);++FileConfigNum)
       {
          DispatchVar(FileConfiguration)=NULL;
-         DispatchVar(TPrjConfig)=NULL;
-         FileConfigurationName=NULL;
+         DispatchVar(LinkedProjectConfig)=NULL;
+        
          IfSafeGetCollectionItemFails(FileConfiguration,CComVariant(FileConfigNum))
          {
             continue;
          }
          FromDispatch(FileConfiguration);
-         IfSafeCallFails(FileConfiguration->get_Name(&FileConfigurationName))
+
+         IfSafeCallFails(FileConfiguration->get_ExcludedFromBuild(&vbFileExcluded))
          {
-            _ftprintf(stderr, _T("Warning: Failed to get configuration name %i for file %s in \"%s\"\n"),FileConfigNum,OLE2CT(FileName),GetProjectName());
+            _ftprintf(stderr, _T("Warning: get_ExcludedFromBuild failed\n"));
+            vbFileExcluded=VARIANT_FALSE;
+         }
+
+         if(vbFileExcluded==VARIANT_TRUE)
+         {
             continue;
          }
-         FileConfiguration->get_ProjectConfiguration(&DispatchVar(TPrjConfig));
+         IfSafeCallFailsArgs(FileConfiguration->get_ProjectConfiguration(&DispatchVar(LinkedProjectConfig)),!DispatchVar(LinkedProjectConfig))
+         {
+             _ftprintf(stderr, _T("Warning: Failed to get linked configuration %i for file %s in \"%s\"\n"),FileConfigNum,OLE2CT(bsFileName),GetProjectName());
+             continue;
+         }
+         tConf=FindConfigurationByDispatch(DispatchVar(LinkedProjectConfig));
+         if(!tConf)
+         {
+            _ftprintf(stderr, _T("Warning: Failed to get linked configuration %i for file %s in \"%s\"\n"),FileConfigNum,OLE2CT(bsFileName),GetProjectName());
+            continue;
+         }
+         tConf->AddFile(DispatchVar(PrjFile),OLE2CT(bsFileName),OLE2CT(bsFullPath),OLE2CT(bsRelativePath),OLE2CT(bsFileExtension),OLE2CT(bsItemType),iFileType);
 
-         _ftprintf(stderr, _T("Config %i \"%s\" %p\n"),FileConfigNum,OLE2CT(FileConfigurationName),DispatchVar(TPrjConfig));
       }
+   }
+
+   for(auto a=Configs.begin();a<Configs.end();++a)
+   {
+      (*a)->PrintConfigurationData();
    }
    return TRUE;
 }
 
 
-BOOL CVCProject::CreateProject(const TCHAR *ProjectName)
-{
-
-   CComPtr<IDispatch> spDisp = NULL;
-   CComBSTR bstr = "DUMMY DUMMY"; 
-    HRESULT hr2= VCEngine->CreateProject( bstr, &spDisp );
-
-	CComPtr<IDispatch> spDispProj = NULL;
-	 HRESULT hr = VCEngine->CreateProject(CComBSTR(ProjectName), &spDispProj);
-	if (FAILED(hr))
-	{
-		return FALSE;
-	}
-	
-	return TRUE;
-}
 
 BOOL CVCProject::SaveProject()
 {
@@ -394,7 +530,7 @@ BOOL CVCProject::SaveProject()
 
 BOOL CVCProject::CloseProject()
 {
-   if(bChanged)
+   if(bProjectChanged)
    {
       SaveProject();
    }
@@ -408,114 +544,12 @@ BOOL CVCProject::CloseProject()
    Configs.clear();
 
    delete [] ProjectName;
+   delete [] ProjectDir;
    ProjectName=NULL;
+   ProjectDir=NULL;
    return TRUE;
 }
 
-void CVCProject::ForEachFile(pfnForEachFileFunc Func)
-{
-   if(!VCProject)
-   {
-      return;
-   }
-   CComPtr<IDispatch> DiFilesCollection = NULL;
-   CComQIPtr<IVCCollection> FilesCollection;
-   long NumFiles=NULL;
-   CComVariant iFileItem;
-   CComPtr<IDispatch> DiFile = NULL;
-   CComQIPtr <VCFile> File;
-   CComBSTR FileName;
-
-   CComPtr<IDispatch> DiConfigCollection = NULL;
-   CComQIPtr<IVCCollection> ConfigsCollection;
-   long NumConfigs=NULL;
-   CComVariant iConfigItem;
-   CComPtr<IDispatch> DiConfig=NULL;
-   CComQIPtr <VCFileConfiguration> Config;
-   CComBSTR ConfigName;
-   
-
-   HRESULT hr = VCProject->get_Files(&DiFilesCollection);
-   if(FAILED(hr)||!DiFilesCollection)
-   {
-      _ftprintf(stderr, _T("Error: unable to get files from project.\n"));
-      return;
-   }
-   FilesCollection=DiFilesCollection;
-  
-   hr=FilesCollection->get_Count(&NumFiles);
-   if(FAILED(hr)||!NumFiles)
-   {
-      _ftprintf(stderr, _T("Error: unable to count files in project.\n"));
-      return;
-   }
-  
-   for(int i=1;i<=NumFiles;i++)
-   {
-      iFileItem=i;
-      DiFile=NULL;
-      DiConfigCollection=NULL;
-      
-      hr=FilesCollection->Item(iFileItem,&DiFile);
-      if(FAILED(hr)||!DiFile)
-      {
-         _ftprintf(stderr, _T("Error: unable to get file item %i.\n"),i);
-         continue;
-      }
-
-      File=DiFile;
-      hr=File->get_ItemName(&FileName);
-      if(FAILED(hr))
-      {
-         _ftprintf(stderr, _T("Error: unable to get name for file %i.\n"),i);
-         continue;
-      }
-      hr=File->get_FileConfigurations(&DiConfigCollection);
-      if(FAILED(hr))
-      {
-         _ftprintf(stderr, _T("Error: unable to get configurations for %s.\n"),COLE2T(FileName));
-         continue;
-      }
-      ConfigsCollection=DiConfigCollection;
-      hr=ConfigsCollection->get_Count(&NumConfigs);
-      if(FAILED(hr)||!NumConfigs)
-      {
-         _ftprintf(stderr, _T("Error: unable to count configs for %s.\n"),COLE2T(FileName));
-         continue;
-      }
-
-      for(int j=1;j<=NumConfigs;j++)
-      {
-         iConfigItem=j;
-         DiConfig=NULL;
-         hr=ConfigsCollection->Item(iConfigItem,&DiConfig);
-         if(FAILED(hr)||!DiConfig)
-         {
-            
-            _ftprintf(stderr, _T("Error: unable to get config item %i for %s.\n"),j,COLE2T(FileName));
-            continue;          
-         }
-         Config=DiConfig;
-         hr=Config->get_Name(&ConfigName);
-         if(FAILED(hr))
-         {
-            _ftprintf(stderr, _T("Error: unable to get name for config %i in %s.\n"),j,COLE2T(FileName));
-            continue;
-         }
-         CComBSTR Ext;
-         File->get_Extension(&Ext);
-
-         _ftprintf(stdout,_T("%s\n"),COLE2T(ConfigName));
-          _ftprintf(stdout,_T("%s\n"),COLE2T(Ext));
-         Config.Release();
-      }
-      ConfigsCollection.Release();
-      File.Release();
-      
-   }
-
-  // VCProjectConf
-}
 
 const TCHAR * CVCProject::GetProjectName()
 {
@@ -645,11 +679,22 @@ BOOL CVCProject::CopyComponents()
 BOOL CVCProject::DeleteComponents()
 {
    return Fs.RemoveDir(szComponentsInternalDir);
-
 }
 
 
 
+
+CProjectConfiguration * CVCProject::FindConfigurationByDispatch(CComPtr<IDispatch> pConfigDispatch)
+{
+   for(auto a=Configs.begin();a<Configs.end();++a)
+   {
+      if((*a)->GetConfigDispatch()==pConfigDispatch)
+      {
+         return (*a);
+      }
+   }
+   return NULL;
+}
 
 CProjectConfiguration::CProjectConfiguration(const TCHAR *PlatformName,const TCHAR *ConfigName,CComPtr<IDispatch> pConfigDispatch)
 {
@@ -657,6 +702,9 @@ CProjectConfiguration::CProjectConfiguration(const TCHAR *PlatformName,const TCH
    szPlatName=NULL;
    szConfigName=NULL;
    szUserMacroFile=NULL;
+   szProjectDir=NULL;
+   szOutputDir=NULL;
+   szIntermediateDir=NULL;
    if(PlatformName)
    {
       len=_tcslen(PlatformName)+1;
@@ -681,6 +729,9 @@ CProjectConfiguration::~CProjectConfiguration()
    delete [] szPlatName;
    delete [] szConfigName;
    delete [] szUserMacroFile;
+   delete [] szOutputDir;
+   delete [] szIntermediateDir;
+   delete [] szProjectDir;
 
    for(auto pf=ProjectFiles.begin();pf<ProjectFiles.end();++pf)
    {
@@ -697,6 +748,149 @@ CProjectConfiguration::~CProjectConfiguration()
    UserMacros.clear();
 }
 
+BOOL CProjectConfiguration::SetOutputDir(const TCHAR *sziOutputDir)
+{
+   if(!sziOutputDir)
+   {
+      _ftprintf(stderr,_T("ERROR: sziOutputDir is empty! \n"));
+      return FALSE;
+   }
+   if(!szProjectDir&&PathIsRelative(sziOutputDir))
+   {
+      _ftprintf(stderr,_T("ERROR: szProjectDir is not set! \n"));
+      return FALSE;
+   }
+
+   TCHAR CombinedPath[MAX_PATH];
+   TCHAR CanonicalizePath[MAX_PATH];
+
+   if(PathIsRelative(sziOutputDir))
+   {
+      PathCombine(CombinedPath,szProjectDir,sziOutputDir);
+      PathCanonicalize(CanonicalizePath,CombinedPath);
+   }
+   else
+   {
+      PathCanonicalize(CanonicalizePath,sziOutputDir);
+   }
+
+   if(!CanonicalizePath[0])
+   {
+      _ftprintf(stderr,_T("ERROR: sziOutputDir not canonicalized! \n"));
+      return FALSE;
+   }
+
+  
+   if(CanonicalizePath[_tcslen(CanonicalizePath)-1]!=_T('\\'))
+   {
+      _tcscat_s(CanonicalizePath,_T("\\"));
+   }
+
+   size_t len=_tcslen(CanonicalizePath)+1;
+   delete [] szOutputDir;
+   szOutputDir=new TCHAR[len];
+   _tcscpy_s(szOutputDir,len,CanonicalizePath);
+   _ftprintf(stderr,_T("INFO: szOutputDir = \"%s\" \n"),szOutputDir);
+   return TRUE;
+}
+
+BOOL CProjectConfiguration::SetIntermediateDir(const TCHAR *sziIntermediateDir)
+{
+   if(!sziIntermediateDir)
+   {
+      _ftprintf(stderr,_T("ERROR: sziIntermediateDir is empty! \n"));
+      return FALSE;
+   }
+   if(!szProjectDir&&PathIsRelative(sziIntermediateDir))
+   {
+      _ftprintf(stderr,_T("ERROR: szProjectDir is not set! \n"));
+      return FALSE;
+   }
+
+   TCHAR CombinedPath[MAX_PATH];
+   TCHAR CanonicalizePath[MAX_PATH];
+
+   if(PathIsRelative(sziIntermediateDir))
+   {
+      PathCombine(CombinedPath,szProjectDir,sziIntermediateDir);
+      PathCanonicalize(CanonicalizePath,CombinedPath);
+   }
+   else
+   {
+      PathCanonicalize(CanonicalizePath,sziIntermediateDir);
+   }
+
+   if(!CanonicalizePath[0])
+   {
+      _ftprintf(stderr,_T("ERROR: sziIntermediateDir not canonicalized! \n"));
+      return FALSE;
+   }
+
+   if(CanonicalizePath[_tcslen(CanonicalizePath)-1]!=_T('\\'))
+   {
+      _tcscat_s(CanonicalizePath,_T("\\"));
+   }
+
+   size_t len=_tcslen(CanonicalizePath)+1;
+   delete [] szIntermediateDir;
+   szIntermediateDir=new TCHAR[len];
+   _tcscpy_s(szIntermediateDir,len,CanonicalizePath);
+  
+    _ftprintf(stderr,_T("INFO: szIntermediateDir = \"%s\" \n"),szIntermediateDir);
+   return TRUE;
+}
+
+BOOL CProjectConfiguration::SetProjectDir(const TCHAR *sziProjectDir)
+{
+   if(!sziProjectDir)
+   {
+      _ftprintf(stderr,_T("ERROR: sziProjectDir is empty! \n"));
+      return FALSE;
+   }
+   if(PathIsRelative(sziProjectDir))
+   {
+      _ftprintf(stderr,_T("ERROR: (\"%s\") is relative!\n"),sziProjectDir);
+      return FALSE;
+   }
+   if(!PathIsDirectory(sziProjectDir))
+   {
+      _ftprintf(stderr,_T("ERROR: (\"%s\") is not a directory!\n"),sziProjectDir);
+      return FALSE;
+   }
+   
+   TCHAR CanonicalizePath[MAX_PATH];
+   PathCanonicalize(CanonicalizePath,sziProjectDir);
+
+   if(CanonicalizePath[_tcslen(CanonicalizePath)-1]!=_T('\\'))
+   {
+      _tcscat_s(CanonicalizePath,_T("\\"));
+   }
+
+   size_t len=_tcslen(CanonicalizePath)+1;
+   delete [] szProjectDir;
+   szProjectDir=new TCHAR[len];
+   _tcscpy_s(szProjectDir,len,CanonicalizePath);
+   _ftprintf(stderr,_T("INFO: szProjectDir = \"%s\" \n"),szProjectDir);
+   return TRUE;
+}
+
+const TCHAR * CProjectConfiguration::GetFileIntermediatePath(CFileInfo *File,const TCHAR *Ext)
+{
+   if(!File)
+   {
+      return NULL;
+   }
+   TCHAR szIntPath[MAX_PATH];
+   TCHAR szCanonPath[MAX_PATH];
+   PathCombine(szIntPath,szIntermediateDir,File->GetRelativePath());
+   PathRemoveExtension(szIntPath);
+   if(Ext)
+   {
+      PathAddExtension(szIntPath,Ext);
+   }
+   PathCanonicalize(szCanonPath,szIntPath);
+   return szCanonPath;
+}
 
 void CProjectConfiguration::AddUserMacro(const TCHAR *Name,const TCHAR *Value,BOOL EnvSet,const TCHAR *FilePath)
 {
@@ -769,9 +963,83 @@ void CProjectConfiguration::PrintConfigurationData()
    {
        _ftprintf(stderr,_T("\t [%s] \"%s\"=\"%s\" (%i)\n"),(*a)->szFilePath,(*a)->szName,(*a)->szVal,(*a)->bEnvSet);
    }
+
+   for(auto pf=ProjectFiles.begin();pf<ProjectFiles.end();++pf)
+   {
+      //(*pf)->PrintFileInfo();
+      _tprintf(_T("ExtFile->%s\n"),GetFileIntermediatePath((*pf),_T(".o")));
+   }
+}
+
+BOOL CProjectConfiguration::AddFile(CComPtr<IDispatch> pFileDispatch,const TCHAR *pFileName,const TCHAR *pFullPath,const TCHAR *pRelativePath,const TCHAR *pFileExtension,const TCHAR *pItemType,VCProjectEngineLibrary::eFileType inFileType)
+{
+   CComQIPtr<VCFile> ProjectFile =pFileDispatch;
+   if(!ProjectFile)
+   {
+      return FALSE;
+   }
+   auto pFile=FindFile(pFileDispatch);
+   if(pFile)
+   {
+      _ftprintf(stderr,_T("File \"%s\" already exists in project\n"),pFile->GetFileName());
+      return FALSE;
+   }
+
+   auto prjFile=new CFileInfo(pFileDispatch,pFileName,pFullPath,pRelativePath,pFileExtension,pItemType,inFileType);
+   ProjectFiles.push_back(prjFile);
+   return TRUE;
+}
+
+CFileInfo * CProjectConfiguration::FindFile(CComPtr<IDispatch> dpProjectFile)
+{
+   for(auto a=ProjectFiles.begin();a<ProjectFiles.end();++a)
+   {
+      if((*a)->GetFileDispatch()==dpProjectFile)
+      {
+         return (*a);
+      }
+   }
+   return NULL;
+}
+
+CFileInfo::CFileInfo(CComPtr<IDispatch> pFileDispatch,const TCHAR *pFileName,const TCHAR *pFullPath,const TCHAR *pRelativePath,const TCHAR *pFileExtension,const TCHAR *pItemType,VCProjectEngineLibrary::eFileType inFileType)
+{
+   FileDispatch=pFileDispatch;
+   auto CopyStr=[](const TCHAR *In,TCHAR **Out)
+   {
+      if(!Out)
+      {
+         return;
+      }
+      if(!In)
+      {
+         Out=NULL;
+      }
+      size_t len=_tcslen(In)+1;
+      *Out=new TCHAR[len];
+      _tcscpy_s(*Out,len,In);
+   };
+   CopyStr(pFileName,&szFileName);
+   CopyStr(pFullPath,&szFullPath);
+   CopyStr(pRelativePath,&szRelativePath);
+   CopyStr(pFileExtension,&szFileExtension);
+   CopyStr(pItemType,&szItemType);
+   FileType=inFileType;
+
+
 }
 
 CFileInfo::~CFileInfo()
 {
+   FileDispatch=NULL;
+   delete [] szFileName;
+   delete [] szFullPath;
+   delete [] szFileExtension;
+   delete [] szItemType;
+   delete [] szRelativePath;
+}
 
+void CFileInfo::PrintFileInfo()
+{
+    _ftprintf(stderr,_T("File \"%s\". Rel=\"%s\" Ext=\"%s\" ItemType=\"%s\" FileType=\"%s\" \n"),szFileName,szRelativePath, szFileExtension,szItemType,FileTypeToString(FileType));
 }
